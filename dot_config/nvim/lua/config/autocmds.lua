@@ -1,0 +1,171 @@
+-- ================================================================================================
+-- TITLE : auto-commands
+-- ABOUT : automatically run code on defined events (e.g. save, yank)
+-- ================================================================================================
+local on_attach = require("utils.lsp").on_attach
+
+local hover_handler = vim.lsp.handlers.hover
+vim.lsp.handlers["textDocument/hover"] = function(err, result, ctx, config)
+	config = vim.tbl_deep_extend("force", { border = "rounded" }, config or {})
+	return hover_handler(err, result, ctx, config)
+end
+
+local signature_help_handler = vim.lsp.handlers.signature_help
+vim.lsp.handlers["textDocument/signatureHelp"] = function(err, result, ctx, config)
+	config = vim.tbl_deep_extend("force", { border = "rounded" }, config or {})
+	return signature_help_handler(err, result, ctx, config)
+end
+
+-- Restore last cursor position when reopening a file
+local last_cursor_group = vim.api.nvim_create_augroup("LastCursorGroup", {})
+vim.api.nvim_create_autocmd("BufReadPost", {
+	group = last_cursor_group,
+	callback = function()
+		local mark = vim.api.nvim_buf_get_mark(0, '"')
+		local lcount = vim.api.nvim_buf_line_count(0)
+		if mark[1] > 0 and mark[1] <= lcount then
+			pcall(vim.api.nvim_win_set_cursor, 0, mark)
+		end
+	end,
+})
+
+-- Highlight the yanked text for 200ms
+local highlight_yank_group = vim.api.nvim_create_augroup("HighlightYank", {})
+vim.api.nvim_create_autocmd("TextYankPost", {
+	group = highlight_yank_group,
+	pattern = "*",
+	callback = function()
+		vim.hl.on_yank({
+			higroup = "IncSearch",
+			timeout = 200,
+		})
+	end,
+})
+
+local special_filetypes = {
+	checkhealth = true,
+	help = true,
+	lazy = true,
+	mason = true,
+	oil = true,
+	qf = true,
+	snacks_dashboard = true,
+	trouble = true,
+}
+
+local trim_disabled_filetypes = {
+	gitcommit = true,
+	markdown = true,
+	text = true,
+}
+
+local format_disabled_filetypes = {
+	gitcommit = true,
+	markdown = true,
+	text = true,
+}
+
+local no_swap_filetypes = vim.tbl_extend("force", {}, special_filetypes)
+
+local function disable_swapfile_for_special_buffers(bufnr)
+	if not vim.api.nvim_buf_is_valid(bufnr) then
+		return
+	end
+	if vim.bo[bufnr].buftype ~= "" or no_swap_filetypes[vim.bo[bufnr].filetype] then
+		vim.bo[bufnr].swapfile = false
+	end
+end
+
+local function should_handle_save(bufnr)
+	if not vim.api.nvim_buf_is_valid(bufnr) then
+		return false
+	end
+	if vim.bo[bufnr].buftype ~= "" or not vim.bo[bufnr].modifiable or vim.bo[bufnr].readonly then
+		return false
+	end
+	if special_filetypes[vim.bo[bufnr].filetype] then
+		return false
+	end
+	return true
+end
+
+local function project_disables_format(bufnr)
+	local name = vim.api.nvim_buf_get_name(bufnr)
+	if name == "" then
+		return false
+	end
+
+	local dir = vim.fs.dirname(name)
+	return #vim.fs.find(".nvim-disable-format-on-save", { path = dir, upward = true }) > 0
+end
+
+local function should_format_on_save(bufnr)
+	if vim.g.format_on_save == false or vim.b[bufnr].format_on_save == false then
+		return false
+	end
+	if format_disabled_filetypes[vim.bo[bufnr].filetype] then
+		return false
+	end
+	return not project_disables_format(bufnr)
+end
+
+-- format on save using conform.nvim and LSP fallback
+local lsp_fmt_group = vim.api.nvim_create_augroup("FormatOnSaveGroup", {})
+vim.api.nvim_create_autocmd("BufWritePre", {
+	group = lsp_fmt_group,
+	callback = function(args)
+		if not should_handle_save(args.buf) then
+			return
+		end
+
+		if not trim_disabled_filetypes[vim.bo[args.buf].filetype] and vim.b[args.buf].trim_trailing_whitespace ~= false then
+			local ok, trailspace = pcall(require, "mini.trailspace")
+			if ok then
+				pcall(trailspace.trim)
+			end
+		end
+
+		if not should_format_on_save(args.buf) then
+			return
+		end
+
+		local ok, conform = pcall(require, "conform")
+		if ok then
+			conform.format({ bufnr = args.buf, timeout_ms = 2000, lsp_format = "fallback" })
+		else
+			vim.lsp.buf.format({ bufnr = args.buf, async = false, timeout_ms = 2000 })
+		end
+	end,
+})
+
+local swapfile_group = vim.api.nvim_create_augroup("SpecialBufferSwapfile", { clear = true })
+vim.api.nvim_create_autocmd({ "BufEnter", "FileType" }, {
+	group = swapfile_group,
+	callback = function(args)
+		disable_swapfile_for_special_buffers(args.buf)
+	end,
+})
+
+-- on attach function shortcuts
+local lsp_on_attach_group = vim.api.nvim_create_augroup("LspMappings", {})
+vim.api.nvim_create_autocmd("LspAttach", {
+	group = lsp_on_attach_group,
+	callback = on_attach,
+})
+
+-- custom options for text/markdown files
+local markdown_options = vim.api.nvim_create_augroup("MarkdownOptions", {})
+vim.api.nvim_create_autocmd("FileType", {
+	group = markdown_options,
+	pattern = { "markdown", "text", "gitcommit" },
+	callback = function()
+		vim.opt_local.wrap = true
+		vim.opt_local.linebreak = true
+		vim.opt_local.relativenumber = false
+		vim.opt_local.number = false
+		vim.opt_local.cursorline = false
+		vim.opt_local.colorcolumn = ""
+		vim.opt_local.signcolumn = "no"
+		vim.opt_local.spell = true
+	end,
+})

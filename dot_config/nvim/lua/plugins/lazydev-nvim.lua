@@ -1,0 +1,16 @@
+-- ================================================================================================
+-- TITLE : lazydev.nvim
+-- ABOUT : Better LuaLS library metadata for Neovim config and plugin development.
+-- LINKS :
+--   > github : https://github.com/folke/lazydev.nvim
+-- ================================================================================================
+
+return {
+	"folke/lazydev.nvim",
+	ft = "lua",
+	opts = {
+		library = {
+			{ path = "${3rd}/luv/library", words = { "vim%.uv" } },
+		},
+	},
+}
