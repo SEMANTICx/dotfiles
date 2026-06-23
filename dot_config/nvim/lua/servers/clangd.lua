@@ -7,12 +7,20 @@
 --- @param capabilities table LSP client capabilities from the completion engine
 --- @return nil
 return function(capabilities)
-	vim.lsp.config('clangd',{
+	vim.lsp.config("clangd", {
 		capabilities = capabilities,
 		cmd = {
 			"clangd",
 			"--offset-encoding=utf-16",
 		},
 		filetypes = { "c", "cpp" },
+		root_markers = {
+			".clangd",
+			"compile_commands.json",
+			"compile_flags.txt",
+			"CMakeLists.txt",
+			"meson.build",
+			"Makefile",
+		},
 	})
 end

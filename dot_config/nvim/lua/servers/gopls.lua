@@ -7,7 +7,7 @@
 --- @param capabilities table LSP client capabilities from the completion engine
 --- @return nil
 return function(capabilities)
-	vim.lsp.config('gopls', {
+	vim.lsp.config("gopls", {
 		capabilities = capabilities,
 		filetypes = { "go" },
 		root_markers = {

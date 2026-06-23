@@ -19,6 +19,8 @@ return function(capabilities)
 			"package.json",
 			"tsconfig.json",
 			"jsconfig.json",
+			"deno.json",
+			"deno.jsonc",
 		},
 		settings = {
 			typescript = {

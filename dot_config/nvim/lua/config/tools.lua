@@ -19,6 +19,7 @@ M.language_order = {
 	"markdown",
 	"svelte_vue",
 	"rust",
+	"zig",
 	"solidity",
 }
 
@@ -134,6 +135,11 @@ M.languages = {
 	rust = {
 		mason = { "codelldb" },
 		treesitter = { "rust" },
+	},
+	zig = {
+		lsp = "zls",
+		mason = { "zls" },
+		treesitter = { "zig" },
 	},
 	solidity = {
 		treesitter = { "solidity" },

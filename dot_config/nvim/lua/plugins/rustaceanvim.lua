@@ -30,6 +30,44 @@ local get_codelldb_adapter = function()
 end
 
 local config = function()
+	local function should_attach(bufnr)
+		if vim.bo[bufnr].buftype ~= "" then
+			return false
+		end
+
+		local path = vim.api.nvim_buf_get_name(bufnr)
+		if path == "" then
+			return false
+		end
+
+		return vim.fn.executable("rust-analyzer") == 1
+	end
+
+	local function has_rust_workspace(root)
+		return root and vim.fs.root(root, { "Cargo.toml", "rust-project.json" }) ~= nil
+	end
+
+	local function rust_analyzer_settings(root)
+		if not has_rust_workspace(root) then
+			return {
+				["rust-analyzer"] = {
+					cargo = {
+						allFeatures = false,
+					},
+					checkOnSave = false,
+				},
+			}
+		end
+
+		return {
+			["rust-analyzer"] = {
+				cargo = {
+					allFeatures = true,
+				},
+			},
+		}
+	end
+
 	local settings = {
 		tools = {
 			hover_actions = {
@@ -37,14 +75,11 @@ local config = function()
 			},
 		},
 		server = {
+			auto_attach = should_attach,
 			on_attach = on_attach,
-			settings = {
-				["rust-analyzer"] = {
-					cargo = {
-						allFeatures = true,
-					},
-				},
-			},
+			standalone = true,
+			status_notify_level = false,
+			settings = rust_analyzer_settings,
 		},
 		dap = {},
 	}
@@ -59,5 +94,5 @@ return {
 	"mrcjkb/rustaceanvim",
 	version = "^6",
 	ft = { "rust" },
-	config = config,
+	init = config,
 }
