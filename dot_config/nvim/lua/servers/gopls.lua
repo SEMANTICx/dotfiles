@@ -14,5 +14,20 @@ return function(capabilities)
 			"go.work",
 			"go.mod",
 		},
+		settings = {
+			gopls = {
+				gofumpt = true,
+				staticcheck = false,
+				analyses = {
+					fieldalignment = false,
+					nilness = true,
+					shadow = false,
+					unusedparams = true,
+					unusedwrite = true,
+					useany = true,
+				},
+				semanticTokens = true,
+			},
+		},
 	})
 end

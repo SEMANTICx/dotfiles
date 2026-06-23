@@ -11,6 +11,12 @@ return function(capabilities)
 		capabilities = capabilities,
 		cmd = {
 			"clangd",
+			"--background-index",
+			"--clang-tidy=false",
+			"--completion-style=detailed",
+			"--fallback-style=llvm",
+			"--function-arg-placeholders",
+			"--header-insertion=iwyu",
 			"--offset-encoding=utf-16",
 		},
 		filetypes = { "c", "cpp" },

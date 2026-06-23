@@ -53,8 +53,14 @@ local config = function()
 				["rust-analyzer"] = {
 					cargo = {
 						allFeatures = false,
+						buildScripts = {
+							enable = false,
+						},
 					},
 					checkOnSave = false,
+					procMacro = {
+						enable = false,
+					},
 				},
 			}
 		end
@@ -63,6 +69,16 @@ local config = function()
 			["rust-analyzer"] = {
 				cargo = {
 					allFeatures = true,
+					buildScripts = {
+						enable = true,
+					},
+				},
+				check = {
+					command = vim.g.rust_analyzer_check_command or "check",
+				},
+				checkOnSave = true,
+				procMacro = {
+					enable = true,
 				},
 			},
 		}

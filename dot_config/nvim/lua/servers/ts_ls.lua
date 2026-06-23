@@ -7,6 +7,27 @@
 --- @param capabilities table LSP client capabilities from the completion engine
 --- @return nil
 return function(capabilities)
+	local format = {
+		enable = false,
+	}
+	local inlay_hints = {
+		enumMemberValues = { enabled = true },
+		functionLikeReturnTypes = { enabled = true },
+		parameterNames = { enabled = "literals", suppressWhenArgumentMatchesName = true },
+		parameterTypes = { enabled = false },
+		propertyDeclarationTypes = { enabled = true },
+		variableTypes = { enabled = false, suppressWhenTypeMatchesName = true },
+	}
+	local preferences = {
+		importModuleSpecifier = "shortest",
+		importModuleSpecifierEnding = "minimal",
+		includePackageJsonAutoImports = "auto",
+		preferTypeOnlyAutoImports = true,
+		quoteStyle = "auto",
+		renameMatchingJsxTags = true,
+		useAliasesForRenames = true,
+	}
+
 	vim.lsp.config("ts_ls", {
 		capabilities = capabilities,
 		filetypes = {
@@ -23,9 +44,21 @@ return function(capabilities)
 			"deno.jsonc",
 		},
 		settings = {
+			javascript = {
+				format = format,
+				inlayHints = inlay_hints,
+				preferences = preferences,
+				updateImportsOnFileMove = {
+					enabled = "always",
+				},
+			},
 			typescript = {
-				indentStyle = "space",
-				indentSize = 2,
+				format = format,
+				inlayHints = inlay_hints,
+				preferences = preferences,
+				updateImportsOnFileMove = {
+					enabled = "always",
+				},
 			},
 		},
 	})
