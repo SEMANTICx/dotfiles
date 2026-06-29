@@ -74,6 +74,91 @@ local function dashboard_frame_count()
 	return #vim.fn.globpath(dir, "frame_*.txt", false, true)
 end
 
+local function validate_string_list(issues, value, label)
+	if value == nil then
+		return
+	end
+	if type(value) ~= "table" then
+		issues[#issues + 1] = label .. " must be a table"
+		return
+	end
+	for index, item in ipairs(value) do
+		if type(item) ~= "string" then
+			issues[#issues + 1] = string.format("%s[%d] must be a string", label, index)
+		end
+	end
+end
+
+local function validate_by_filetype(issues, value, label)
+	if value == nil then
+		return
+	end
+	if type(value) ~= "table" then
+		issues[#issues + 1] = label .. " must be a table"
+		return
+	end
+	for filetype, list in pairs(value) do
+		if type(filetype) ~= "string" then
+			issues[#issues + 1] = label .. " filetype keys must be strings"
+		end
+		validate_string_list(issues, list, label .. "." .. tostring(filetype))
+	end
+end
+
+local function check_tools_schema(results, tools)
+	local errors = {}
+	local warnings = {}
+	local ordered = {}
+
+	if type(tools.language_order) ~= "table" then
+		errors[#errors + 1] = "language_order must be a table"
+	end
+	if type(tools.languages) ~= "table" then
+		errors[#errors + 1] = "languages must be a table"
+	end
+	if #errors > 0 then
+		add(results, "ERR", "tools schema", table.concat(errors, "; "))
+		return
+	end
+
+	for index, name in ipairs(tools.language_order) do
+		if type(name) ~= "string" then
+			errors[#errors + 1] = string.format("language_order[%d] must be a string", index)
+		elseif ordered[name] then
+			warnings[#warnings + 1] = "duplicate language_order entry: " .. name
+		elseif not tools.languages[name] then
+			errors[#errors + 1] = "language_order references missing language: " .. name
+		else
+			ordered[name] = true
+		end
+	end
+
+	for name, language in pairs(tools.languages) do
+		if not ordered[name] then
+			warnings[#warnings + 1] = "language not listed in language_order: " .. name
+		end
+		if type(language) ~= "table" then
+			errors[#errors + 1] = "language must be a table: " .. name
+		else
+			if language.lsp ~= nil and type(language.lsp) ~= "string" then
+				errors[#errors + 1] = name .. ".lsp must be a string"
+			end
+			validate_string_list(errors, language.mason, name .. ".mason")
+			validate_string_list(errors, language.treesitter, name .. ".treesitter")
+			validate_by_filetype(errors, language.formatters, name .. ".formatters")
+			validate_by_filetype(errors, language.linters, name .. ".linters")
+		end
+	end
+
+	if #errors > 0 then
+		add(results, "ERR", "tools schema", table.concat(errors, "; "))
+	elseif #warnings > 0 then
+		add(results, "WARN", "tools schema", table.concat(warnings, "; "))
+	else
+		add(results, "OK", "tools schema", "language_order and language definitions are consistent")
+	end
+end
+
 local function missing_mason_tools(tools)
 	local ok, registry = pcall(require, "mason-registry")
 	if not ok then
@@ -158,9 +243,43 @@ local function show_report(lines, errors, warnings)
 	vim.notify(string.format("ConfigHealth: %d error(s), %d warning(s)", errors, warnings), level, { title = "Nvim" })
 end
 
+local function health_start(name)
+	if vim.health.start then
+		vim.health.start(name)
+	else
+		vim.health.report_start(name)
+	end
+end
+
+local function health_ok(message)
+	if vim.health.ok then
+		vim.health.ok(message)
+	else
+		vim.health.report_ok(message)
+	end
+end
+
+local function health_warn(message)
+	if vim.health.warn then
+		vim.health.warn(message)
+	else
+		vim.health.report_warn(message)
+	end
+end
+
+local function health_error(message)
+	if vim.health.error then
+		vim.health.error(message)
+	else
+		vim.health.report_error(message)
+	end
+end
+
 function M.collect()
 	local tools = require("config.tools")
 	local results = {}
+
+	check_tools_schema(results, tools)
 
 	add(results, vim.o.cmdheight == 1 and "OK" or "ERR", "cmdheight", tostring(vim.o.cmdheight))
 	add(
@@ -252,6 +371,21 @@ end
 function M.run()
 	local lines, errors, warnings = build_report(M.collect())
 	show_report(lines, errors, warnings)
+end
+
+function M.check()
+	health_start("Neovim config")
+
+	for _, result in ipairs(M.collect()) do
+		local message = string.format("%s: %s", result.name, result.detail or "")
+		if result.status == "OK" then
+			health_ok(message)
+		elseif result.status == "WARN" then
+			health_warn(message)
+		else
+			health_error(message)
+		end
+	end
 end
 
 function M.sync_tools()

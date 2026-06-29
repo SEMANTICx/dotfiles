@@ -21,7 +21,7 @@ Supported languages and frameworks include: `typescript`, `javascript`, `python`
 - Oil is the editable directory buffer. nvim-tree is the persistent project tree.
 - Format-on-save skips special, non-modifiable, readonly, Markdown, text, and git commit buffers.
 - Language support is centralized in `lua/config/tools.lua`; LSP servers, Mason tools, Treesitter parsers, formatters, and linters are derived from that file.
-- Dashboard animation is disabled automatically in headless, small, or non-UI sessions.
+- Dashboard animation is disabled automatically in headless or non-UI sessions, and can be toggled at runtime.
 
 ## Version
 
