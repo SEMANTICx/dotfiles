@@ -44,12 +44,47 @@ return {
 		renderer = {
 			group_empty = true,
 			highlight_git = true,
+			highlight_opened_files = "name",
+			root_folder_label = false,
+			indent_markers = {
+				enable = true,
+				inline_arrows = true,
+				icons = {
+					corner = "└",
+					edge = "│",
+					item = "│",
+					bottom = "─",
+					none = " ",
+				},
+			},
 			icons = {
+				git_placement = "after",
 				show = {
 					file = true,
 					folder = true,
 					folder_arrow = true,
 					git = true,
+				},
+				glyphs = {
+					default = "󰈚",
+					symlink = "",
+					folder = {
+						arrow_closed = "",
+						arrow_open = "",
+						default = "",
+						open = "",
+						empty = "",
+						empty_open = "",
+					},
+					git = {
+						unstaged = "",
+						staged = "✓",
+						unmerged = "",
+						renamed = "➜",
+						untracked = "★",
+						deleted = "",
+						ignored = "◌",
+					},
 				},
 			},
 		},
