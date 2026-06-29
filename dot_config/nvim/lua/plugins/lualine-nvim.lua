@@ -10,7 +10,7 @@ return {
 	config = function()
 		require("lualine").setup({
 			options = {
-				theme = "nightfox",
+				theme = "auto",
 				icons_enabled = true,
 				globalstatus = true,
 				section_separators = { left = "", right = "" },
@@ -20,6 +20,10 @@ return {
 				},
 			},
 			sections = {
+				lualine_b = {
+					"branch",
+					"diff",
+				},
 				lualine_x = {
 					"diagnostics",
 					"encoding",
