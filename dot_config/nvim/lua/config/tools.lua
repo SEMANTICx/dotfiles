@@ -46,7 +46,7 @@ M.languages = {
 	},
 	json = {
 		lsp = "jsonls",
-		mason = { "fixjson" },
+		mason = { "json-lsp", "fixjson" },
 		treesitter = { "json" },
 		formatters = {
 			json = { "fixjson" },
