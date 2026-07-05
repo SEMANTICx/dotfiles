@@ -12,6 +12,7 @@ local ghosty_art_ns = vim.api.nvim_create_namespace("ghosty_dashboard_art")
 local ghosty_art_state
 local pause_dashboard_animation
 local resume_dashboard_animation
+local dashboard_saved_laststatus
 
 local ghosty_frame_count = 100
 local ghosty_source_width = 100
@@ -180,6 +181,32 @@ local function find_dashboard()
 		if vim.bo[buf].filetype == "snacks_dashboard" then
 			return win, buf
 		end
+	end
+end
+
+local function dashboard_visible()
+	return find_dashboard() ~= nil
+end
+
+local function hide_dashboard_statusline()
+	if dashboard_saved_laststatus == nil then
+		dashboard_saved_laststatus = vim.o.laststatus
+	end
+	vim.o.laststatus = 0
+end
+
+local function restore_dashboard_statusline()
+	if dashboard_saved_laststatus ~= nil then
+		vim.o.laststatus = dashboard_saved_laststatus
+		dashboard_saved_laststatus = nil
+	end
+end
+
+local function sync_dashboard_statusline()
+	if dashboard_visible() then
+		hide_dashboard_statusline()
+	else
+		restore_dashboard_statusline()
 	end
 end
 
@@ -440,6 +467,7 @@ function M.setup()
 		group = group,
 		pattern = "SnacksDashboardOpened",
 		callback = function()
+			hide_dashboard_statusline()
 			start_dashboard_animation()
 			vim.schedule(paint_dashboard_background)
 			local _, buf = find_dashboard()
@@ -451,7 +479,16 @@ function M.setup()
 	vim.api.nvim_create_autocmd("User", {
 		group = group,
 		pattern = "SnacksDashboardClosed",
-		callback = stop_dashboard_animation,
+		callback = function()
+			stop_dashboard_animation()
+			restore_dashboard_statusline()
+		end,
+	})
+	vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter", "WinClosed" }, {
+		group = group,
+		callback = function()
+			vim.schedule(sync_dashboard_statusline)
+		end,
 	})
 	vim.api.nvim_create_autocmd("User", {
 		group = group,

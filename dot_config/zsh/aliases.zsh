@@ -40,6 +40,17 @@ lf() { # zsh follow lf navigation
     fi
 }
 
+y() { # zsh follow yazi navigation
+    local tmp cwd
+    tmp=$(mktemp -t "yazi-cwd.XXXXXX") || return
+    command yazi "$@" --cwd-file="$tmp"
+    if [ -f "$tmp" ]; then
+        cwd="$(command cat -- "$tmp")"
+        command rm -f -- "$tmp"
+        [ -n "$cwd" ] && [ -d "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+    fi
+}
+
 # =========================================================
 # Editor
 # =========================================================
