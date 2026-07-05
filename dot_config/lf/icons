@@ -1,0 +1,88 @@
+di 󰉋
+ln 󰌹
+or 󰈇
+tw 󱪨
+ow 󱪨
+st 󰉒
+pi 󰟾
+so 󰆧
+bd 󰋊
+cd 󰋊
+su 󰌾
+sg 󰌾
+ex 󰞷
+
+*.rs 󱘗
+*.c 
+*.cpp 
+*.h 
+*.hpp 
+
+*.lua 
+*.vim 
+
+*.py 
+
+*.js 
+*.ts 
+
+*.jsx 
+*.tsx 
+
+*.json 
+*.yaml 
+*.yml 
+*.toml 
+
+*.md 
+*.txt 󰈙
+
+*.nix 
+
+*.go 
+
+*.java 
+*.kt 
+
+*.html 
+*.css 
+*.scss 
+
+*.png 󰋩
+*.jpg 󰋩
+*.jpeg 󰋩
+*.webp 󰋩
+*.gif 󰵸
+*.svg 󰜡
+
+*.mp4 󰕧
+*.mkv 󰕧
+*.mov 󰕧
+
+*.mp3 󰎆
+*.flac 󰎆
+*.wav 󰎆
+
+*.zip 󰗄
+*.tar 󰗄
+*.gz 󰗄
+*.7z 󰗄
+
+.git 󰊢
+.github 
+
+Cargo.toml 󱘗
+Cargo.lock 󱘗
+
+package.json 󰎙
+package-lock.json 󰎙
+
+node_modules 󰎙
+
+Dockerfile 
+docker-compose.yml 
+
+Makefile 
+
+LICENSE 󰿃
+README.md 

@@ -1,0 +1,144 @@
+[[mgr.prepend_keymap]]
+on = "l"
+run = "plugin smart-enter"
+desc = "Enter the child directory, or open the file"
+
+[[mgr.prepend_keymap]]
+on = "<Enter>"
+run = "plugin smart-enter"
+desc = "Enter the child directory, or open the file"
+
+[[mgr.prepend_keymap]]
+on = "<Backspace>"
+run = "leave"
+desc = "Go back to the parent directory"
+
+[[mgr.prepend_keymap]]
+on = "p"
+run = "plugin smart-paste"
+desc = "Paste into the hovered directory or CWD"
+
+[[mgr.prepend_keymap]]
+on = "T"
+run = "plugin toggle-pane max-preview"
+desc = "Maximize or restore the preview pane"
+
+[[mgr.prepend_keymap]]
+on = "<C-p>"
+run = "plugin toggle-pane min-preview"
+desc = "Show or hide the preview pane"
+
+[[mgr.prepend_keymap]]
+on = "."
+run = "hidden toggle"
+desc = "Toggle hidden files"
+
+[[mgr.prepend_keymap]]
+on = "J"
+run = "plugin jump-to-char"
+desc = "Jump to char"
+
+[[mgr.prepend_keymap]]
+on = "["
+run = "plugin whoosh jump_by_key"
+desc = "Jump bookmark by key"
+
+[[mgr.prepend_keymap]]
+on = [ "]", "f" ]
+run = "plugin whoosh jump_by_fzf"
+desc = "Jump bookmark by fzf"
+
+[[mgr.prepend_keymap]]
+on = [ "]", "a" ]
+run = "plugin whoosh save"
+desc = "Add bookmark for hovered item"
+
+[[mgr.prepend_keymap]]
+on = [ "]", "A" ]
+run = "plugin whoosh save_cwd"
+desc = "Add bookmark for current directory"
+
+[[mgr.prepend_keymap]]
+on = [ "]", "d" ]
+run = "plugin whoosh delete_by_key"
+desc = "Delete bookmark by key"
+
+[[mgr.prepend_keymap]]
+on = "M"
+run = "plugin mount"
+desc = "Mount manager"
+
+[[mgr.prepend_keymap]]
+on = "<F3>"
+run = "plugin mediainfo -- toggle-metadata"
+desc = "Toggle media metadata"
+
+[[mgr.prepend_keymap]]
+on = "<F4>"
+run = "plugin mediainfo -- toggle-preview"
+desc = "Toggle media preview"
+
+[[mgr.prepend_keymap]]
+on = "<F5>"
+run = "plugin mediainfo -- reset"
+desc = "Reset media preview"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "c" ]
+run = "cd ~/.config"
+desc = "Go to ~/.config"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "d" ]
+run = "cd ~/Downloads"
+desc = "Go to ~/Downloads"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "D" ]
+run = "cd ~/Documents"
+desc = "Go to ~/Documents"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "w" ]
+run = "cd ~/Documents/Codex"
+desc = "Go to Codex"
+
+[[mgr.prepend_keymap]]
+on = [ "c", "p" ]
+run = "copy path"
+desc = "Copy the file path"
+
+[[mgr.prepend_keymap]]
+on = [ "c", "d" ]
+run = "copy dirname"
+desc = "Copy the directory path"
+
+[[mgr.prepend_keymap]]
+on = [ "c", "m" ]
+run = "plugin chmod"
+desc = "Chmod on selected files"
+
+[[mgr.prepend_keymap]]
+on = [ "c", "a", "a" ]
+run = "plugin archive"
+desc = "Archive selected files"
+
+[[mgr.prepend_keymap]]
+on = [ "c", "a", "p" ]
+run = "plugin archive -p"
+desc = "Archive selected files with password"
+
+[[mgr.prepend_keymap]]
+on = [ "c", "a", "7" ]
+run = "plugin archive 7z"
+desc = "Archive selected files to 7z"
+
+[[mgr.prepend_keymap]]
+on = [ "c", "a", "t" ]
+run = "plugin archive tar.gz"
+desc = "Archive selected files to tar.gz"
+
+[[mgr.prepend_keymap]]
+on = "!"
+run = 'shell "$SHELL" --block'
+desc = "Open shell here"
