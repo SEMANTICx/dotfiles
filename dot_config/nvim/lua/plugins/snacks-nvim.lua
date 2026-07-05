@@ -116,6 +116,15 @@ return {
 		},
 		notifier = {
 			enabled = true,
+			width = { min = 40, max = 0.8 },
+		},
+		styles = {
+			notification = {
+				wo = {
+					wrap = true,
+					linebreak = true,
+				},
+			},
 		},
 		picker = {
 			enabled = false,
