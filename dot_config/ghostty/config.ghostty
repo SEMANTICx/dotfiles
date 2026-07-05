@@ -19,6 +19,8 @@ adjust-cell-height = 0
 # ghostty +list-themes 可预览全部 300+ 内置主题
 theme = "Gruvbox Dark Hard"
 
+custom-shader = ./shaders/cursor-shaders/cursor_warp.glsl
+
 # ==============================================================================
 # 窗口
 # ==============================================================================
