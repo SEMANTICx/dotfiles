@@ -4,10 +4,13 @@
 -- ================================================================================================
 
 -- Some plugins still reference APIs that moved or disappeared on Neovim nightly.
--- Keep these shims additive so native implementations win as soon as they return.
 -- Revisit after plugin updates; this file should shrink rather than become permanent config.
-if vim.F and not vim.F.npcall then
-	-- Used by plugins that still call vim.F.npcall on newer Neovim builds.
+
+vim.F = vim.F or {}
+-- Used by plugins that still call deprecated vim.F.npcall on newer Neovim builds.
+if vim.npcall then
+	vim.F.npcall = vim.npcall
+else
 	vim.F.npcall = function(fn, ...)
 		local ok, result = pcall(fn, ...)
 		if ok then
@@ -16,7 +19,7 @@ if vim.F and not vim.F.npcall then
 	end
 end
 
-if vim.lsp and not vim.lsp.get_buffers_by_client_id then
+if vim.lsp then
 	-- Used by older LSP-adjacent plugins that have not moved to client.attached_buffers.
 	vim.lsp.get_buffers_by_client_id = function(client_id)
 		local client = vim.lsp.get_client_by_id(client_id)
