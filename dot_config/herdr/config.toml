@@ -1,0 +1,129 @@
+# Herdr config tuned for this Arch/Niri setup.
+# - Zsh is the login shell; fish aliases are kept separately for fish terminals.
+# - Prefix follows your tmux muscle memory: Ctrl-a.
+# - Gruvbox + yellow accent matches Ghostty/tmux.
+
+onboarding = false
+
+[theme]
+name = "gruvbox"
+
+[theme.custom]
+panel_bg = "reset"
+accent = "#e2c779"
+red = "#ff6b8a"
+green = "#b8bb26"
+
+[terminal]
+default_shell = "/usr/sbin/zsh"
+shell_mode = "non_login"
+new_cwd = "follow"
+
+[update]
+channel = "stable"
+version_check = true
+manifest_check = true
+
+[keys]
+prefix = "ctrl+a"
+
+help = "prefix+?"
+settings = "prefix+s"
+detach = "prefix+q"
+reload_config = "prefix+r"
+open_notification_target = "prefix+o"
+workspace_picker = "prefix+w"
+goto = "prefix+shift+g"
+new_workspace = "prefix+shift+n"
+rename_workspace = "prefix+shift+w"
+close_workspace = "prefix+shift+d"
+
+new_tab = "prefix+c"
+rename_tab = "prefix+shift+t"
+previous_tab = "prefix+p"
+next_tab = "prefix+n"
+switch_tab = "prefix+1..9"
+close_tab = "prefix+shift+x"
+
+rename_pane = "prefix+shift+p"
+edit_scrollback = "prefix+e"
+focus_pane_left = "prefix+h"
+focus_pane_down = "prefix+j"
+focus_pane_up = "prefix+k"
+focus_pane_right = "prefix+l"
+cycle_pane_next = "prefix+tab"
+cycle_pane_previous = "prefix+shift+tab"
+split_vertical = "prefix+v"
+split_horizontal = "prefix+minus"
+close_pane = "prefix+x"
+zoom = "prefix+m"
+resize_mode = "prefix+shift+r"
+toggle_sidebar = "prefix+b"
+
+navigate_pane_left = "h"
+navigate_pane_down = "j"
+navigate_pane_up = "k"
+navigate_pane_right = "l"
+
+[[keys.command]]
+key = "prefix+g"
+type = "pane"
+command = "lazygit"
+
+[[keys.command]]
+key = "prefix+shift+y"
+type = "pane"
+command = "yazi"
+
+[[keys.command]]
+key = "prefix+shift+b"
+type = "pane"
+command = "btop"
+
+[worktrees]
+directory = "~/.local/share/herdr/worktrees"
+
+[ui]
+sidebar_width = 30
+sidebar_min_width = 22
+sidebar_max_width = 42
+mobile_width_threshold = 80
+mouse_capture = true
+redraw_on_focus_gained = false
+mouse_scroll_lines = 5
+confirm_close = true
+prompt_new_tab_name = false
+pane_borders = true
+pane_gaps = true
+show_agent_labels_on_pane_borders = true
+agent_panel_sort = "priority"
+accent = "#e2c779"
+
+[ui.toast]
+delivery = "system"
+delay_seconds = 1
+
+[ui.toast.herdr]
+position = "bottom-right"
+
+[ui.toast.clipboard]
+enabled = true
+position = "bottom-center"
+
+[ui.sound]
+enabled = false
+
+[session]
+resume_agents_on_restore = true
+
+[remote]
+manage_ssh_config = true
+
+[experimental]
+allow_nested = false
+kitty_graphics = true
+pane_history = true
+cjk_ime_agents = ["claude", "codex", "opencode"]
+
+[advanced]
+scrollback_limit_bytes = 50000000
