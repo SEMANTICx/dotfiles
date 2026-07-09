@@ -6,9 +6,13 @@
 -- Quick config editing
 vim.keymap.set("n", "<leader>rc", "<Cmd>e ~/.config/nvim/init.lua<CR>", { desc = "Edit config" })
 
-vim.keymap.set("n", "j", function()
+local function down_wrap_aware()
 	return vim.v.count == 0 and "gj" or "j"
-end, { expr = true, silent = true, desc = "Down (wrap-aware)" })
+end
+
+vim.keymap.set("n", "j", down_wrap_aware, { expr = true, silent = true, desc = "Down (wrap-aware)" })
+vim.keymap.set("n", "J", down_wrap_aware, { expr = true, silent = true, desc = "Down (safe J)" })
+vim.keymap.set("x", "J", "j", { desc = "Extend selection down (safe J)" })
 vim.keymap.set("n", "k", function()
 	return vim.v.count == 0 and "gk" or "k"
 end, { expr = true, silent = true, desc = "Up (wrap-aware)" })
@@ -41,7 +45,7 @@ vim.keymap.set("n", "<C-Right>", ":vertical resize +2<CR>", { desc = "Increase w
 vim.keymap.set("v", "<", "<gv", { desc = "Indent left and reselect" })
 vim.keymap.set("v", ">", ">gv", { desc = "Indent right and reselect" })
 
-vim.keymap.set("n", "J", "mzJ`z", { desc = "Join lines and keep cursor position" })
+vim.keymap.set("n", "<leader>cj", "mzJ`z", { desc = "Join lines and keep cursor position" })
 
 vim.keymap.set("n", "<leader>pa", function()
 	local path = vim.fn.expand("%:p")
