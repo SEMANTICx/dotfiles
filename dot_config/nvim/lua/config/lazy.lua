@@ -46,7 +46,7 @@ require("lazy").setup({
 	},
 	install = {
 		colorscheme = {
-			"kanagawa-dragon",
+			"nightfox",
 		},
 	},
 	checker = { enabled = true, notify = false },
