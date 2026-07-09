@@ -46,7 +46,7 @@ require("lazy").setup({
 	},
 	install = {
 		colorscheme = {
-			"nightfox",
+			"gruvbox",
 		},
 	},
 	checker = { enabled = true, notify = false },
