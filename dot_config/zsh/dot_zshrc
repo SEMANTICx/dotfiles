@@ -64,29 +64,39 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}' # lowercase input matches
 # Fuzzy finder
 # =========================================================
 
+_source_fzf_zsh() {
+  source "$1" 2> >(
+    while IFS= read -r line; do
+      [[ "$line" == "(eval):1: can't change option: zle" ]] || print -r -- "$line" >&2
+    done
+  )
+}
+
 # macOS / Homebrew (Apple Silicon)
 if [[ -f /opt/homebrew/opt/fzf/shell/key-bindings.zsh ]]; then
-  source /opt/homebrew/opt/fzf/shell/key-bindings.zsh
-  source /opt/homebrew/opt/fzf/shell/completion.zsh
+  _source_fzf_zsh /opt/homebrew/opt/fzf/shell/key-bindings.zsh
+  _source_fzf_zsh /opt/homebrew/opt/fzf/shell/completion.zsh
 fi
 
 # macOS / Homebrew (Intel)
 if [[ -f /usr/local/opt/fzf/shell/key-bindings.zsh ]]; then
-  source /usr/local/opt/fzf/shell/key-bindings.zsh
-  source /usr/local/opt/fzf/shell/completion.zsh
+  _source_fzf_zsh /usr/local/opt/fzf/shell/key-bindings.zsh
+  _source_fzf_zsh /usr/local/opt/fzf/shell/completion.zsh
 fi
 
 # Arch
 if [[ -f /usr/share/fzf/key-bindings.zsh ]]; then
-  source /usr/share/fzf/key-bindings.zsh
-  source /usr/share/fzf/completion.zsh
+  _source_fzf_zsh /usr/share/fzf/key-bindings.zsh
+  _source_fzf_zsh /usr/share/fzf/completion.zsh
 fi
 
 # Ubuntu
 if [[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]]; then
-  source /usr/share/doc/fzf/examples/key-bindings.zsh
-  source /usr/share/doc/fzf/examples/completion.zsh
+  _source_fzf_zsh /usr/share/doc/fzf/examples/key-bindings.zsh
+  _source_fzf_zsh /usr/share/doc/fzf/examples/completion.zsh
 fi
+
+unset -f _source_fzf_zsh
 
 # =========================================================
 # Modular Config Files
