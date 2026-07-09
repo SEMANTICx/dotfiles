@@ -1,8 +1,8 @@
 -- ================================================================================================
--- TITLE : catppuccin.nvim
--- ABOUT : Catppuccin Mocha colorscheme with transparent background support.
+-- TITLE : kanagawa.nvim
+-- ABOUT : Kanagawa Dragon colorscheme with transparent background support.
 -- LINKS :
---   > github : https://github.com/catppuccin/nvim
+--   > github : https://github.com/rebelot/kanagawa.nvim
 -- ================================================================================================
 
 return {
@@ -21,65 +21,84 @@ return {
 		},
 	},
 	{
-		"catppuccin/nvim",
-		name = "catppuccin",
+		"rebelot/kanagawa.nvim",
 		lazy = false,
 		priority = 999,
 		config = function()
-			require("catppuccin").setup({
-				flavour = "mocha",
-				transparent_background = true,
-				custom_highlights = function(colors)
+			local palette = {
+				bg0 = "#0d0c0c",
+				bg1 = "#12120f",
+				bg2 = "#181616",
+				bg3 = "#1d1c19",
+				fg0 = "#c5c9c5",
+				fg1 = "#a6a69c",
+				fg2 = "#9e9b93",
+				fg3 = "#7a8382",
+				red = "#c4746e",
+				green = "#87a987",
+				yellow = "#c4b28a",
+				teal = "#8ea4a2",
+				blue = "#8ba4b0",
+				purple = "#a292a3",
+			}
+
+			require("kanagawa").setup({
+				transparent = true,
+				theme = "dragon",
+				background = {
+					dark = "dragon",
+				},
+				overrides = function()
 					return {
-						Visual = { bg = colors.surface1 },
+						Visual = { bg = palette.bg3 },
 						CursorLine = { bg = "NONE" },
-						Cursor = { fg = colors.base, bg = colors.text },
-						lCursor = { fg = colors.base, bg = colors.teal },
-						TermCursor = { fg = colors.base, bg = colors.text },
-						CursorLineNr = { fg = colors.yellow, bold = true },
-						FloatBorder = { fg = colors.overlay1, bg = "NONE" },
-						NormalFloat = { fg = colors.text, bg = "NONE" },
-						NvimTreeNormal = { fg = colors.text, bg = colors.crust },
-						NvimTreeNormalNC = { fg = colors.text, bg = colors.crust },
-						NvimTreeEndOfBuffer = { fg = colors.crust, bg = colors.crust },
-						NvimTreeCursorLine = { bg = colors.mantle },
-						NvimTreeWinSeparator = { fg = colors.crust, bg = colors.crust },
-						NvimTreeIndentMarker = { fg = colors.surface1, bg = colors.crust },
-						NvimTreeFolderIcon = { fg = colors.teal, bg = colors.crust },
-						NvimTreeFolderName = { fg = colors.subtext1, bg = colors.crust },
-						NvimTreeOpenedFolderName = { fg = colors.yellow, bg = colors.crust, bold = true },
-						NvimTreeFileIcon = { fg = colors.teal, bg = colors.crust },
-						NvimTreeGitDirty = { fg = colors.yellow, bg = colors.crust },
-						NvimTreeGitNew = { fg = colors.green, bg = colors.crust },
-						NvimTreeGitDeleted = { fg = colors.red, bg = colors.crust },
-						Pmenu = { fg = colors.text, bg = colors.mantle },
-						PmenuSel = { fg = colors.text, bg = colors.surface1, bold = true },
-						WinSeparator = { fg = colors.surface1 },
-						StatusLine = { fg = colors.text, bg = colors.mantle },
-						StatusLineNC = { fg = colors.overlay1, bg = colors.base },
-						MsgArea = { fg = colors.text, bg = "NONE" },
-						ModeMsg = { fg = colors.yellow, bg = "NONE", bold = true },
-						MsgSeparator = { fg = colors.surface1, bg = "NONE" },
+						Cursor = { fg = palette.bg0, bg = palette.fg0 },
+						lCursor = { fg = palette.bg0, bg = palette.teal },
+						TermCursor = { fg = palette.bg0, bg = palette.fg0 },
+						CursorLineNr = { fg = palette.yellow, bold = true },
+						FloatBorder = { fg = palette.fg3, bg = "NONE" },
+						NormalFloat = { fg = palette.fg0, bg = "NONE" },
+						NvimTreeNormal = { fg = palette.fg0, bg = palette.bg1 },
+						NvimTreeNormalNC = { fg = palette.fg0, bg = palette.bg1 },
+						NvimTreeEndOfBuffer = { fg = palette.bg1, bg = palette.bg1 },
+						NvimTreeCursorLine = { bg = palette.bg2 },
+						NvimTreeWinSeparator = { fg = palette.bg1, bg = palette.bg1 },
+						NvimTreeIndentMarker = { fg = palette.bg3, bg = palette.bg1 },
+						NvimTreeFolderIcon = { fg = palette.teal, bg = palette.bg1 },
+						NvimTreeFolderName = { fg = palette.fg1, bg = palette.bg1 },
+						NvimTreeOpenedFolderName = { fg = palette.yellow, bg = palette.bg1, bold = true },
+						NvimTreeFileIcon = { fg = palette.teal, bg = palette.bg1 },
+						NvimTreeGitDirty = { fg = palette.yellow, bg = palette.bg1 },
+						NvimTreeGitNew = { fg = palette.green, bg = palette.bg1 },
+						NvimTreeGitDeleted = { fg = palette.red, bg = palette.bg1 },
+						Pmenu = { fg = palette.fg0, bg = palette.bg2 },
+						PmenuSel = { fg = palette.fg0, bg = palette.bg3, bold = true },
+						WinSeparator = { fg = palette.bg3 },
+						StatusLine = { fg = palette.fg0, bg = palette.bg2 },
+						StatusLineNC = { fg = palette.fg3, bg = palette.bg1 },
+						MsgArea = { fg = palette.fg0, bg = "NONE" },
+						ModeMsg = { fg = palette.yellow, bg = "NONE", bold = true },
+						MsgSeparator = { fg = palette.bg3, bg = "NONE" },
 						MiniTrailspace = { bg = "NONE" },
-						DropBarMenuNormalFloat = { fg = colors.text, bg = colors.mantle },
-						DropBarMenuFloatBorder = { fg = colors.overlay1, bg = "NONE" },
-						DropBarCurrentContext = { fg = colors.yellow, bold = true },
-						DropBarIconUIIndicator = { fg = colors.teal },
-						EdgyNormal = { fg = colors.text, bg = "NONE" },
-						EdgyWinBar = { fg = colors.yellow, bg = "NONE", bold = true },
-						EdgyTitle = { fg = colors.teal, bold = true },
-						SnacksDashboardNormal = { fg = colors.text, bg = "NONE" },
-						SnacksDashboardHeader = { fg = colors.text, bg = "NONE", bold = true },
-						SnacksDashboardIcon = { fg = colors.teal, bg = "NONE" },
-						SnacksDashboardDesc = { fg = colors.subtext1, bg = "NONE" },
-						SnacksDashboardKey = { fg = colors.yellow, bg = "NONE", bold = true },
-						SnacksDashboardFooter = { fg = colors.overlay1, bg = "NONE" },
-						SnacksTerminal = { fg = colors.text, bg = "NONE" },
-						SnacksTerminalBorder = { fg = colors.overlay1, bg = "NONE" },
+						DropBarMenuNormalFloat = { fg = palette.fg0, bg = palette.bg2 },
+						DropBarMenuFloatBorder = { fg = palette.fg3, bg = "NONE" },
+						DropBarCurrentContext = { fg = palette.yellow, bold = true },
+						DropBarIconUIIndicator = { fg = palette.teal },
+						EdgyNormal = { fg = palette.fg0, bg = "NONE" },
+						EdgyWinBar = { fg = palette.yellow, bg = "NONE", bold = true },
+						EdgyTitle = { fg = palette.teal, bold = true },
+						SnacksDashboardNormal = { fg = palette.fg0, bg = "NONE" },
+						SnacksDashboardHeader = { fg = palette.fg0, bg = "NONE", bold = true },
+						SnacksDashboardIcon = { fg = palette.teal, bg = "NONE" },
+						SnacksDashboardDesc = { fg = palette.fg1, bg = "NONE" },
+						SnacksDashboardKey = { fg = palette.yellow, bg = "NONE", bold = true },
+						SnacksDashboardFooter = { fg = palette.fg3, bg = "NONE" },
+						SnacksTerminal = { fg = palette.fg0, bg = "NONE" },
+						SnacksTerminalBorder = { fg = palette.fg3, bg = "NONE" },
 					}
 				end,
 			})
-			vim.cmd("colorscheme catppuccin")
+			vim.cmd("colorscheme kanagawa-dragon")
 		end,
 	},
 }

@@ -46,7 +46,7 @@ require("lazy").setup({
 	},
 	install = {
 		colorscheme = {
-			"catppuccin",
+			"kanagawa-dragon",
 		},
 	},
 	checker = { enabled = true, notify = false },
