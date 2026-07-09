@@ -8,7 +8,22 @@
 return {
 	{ "echasnovski/mini.ai", version = "*", opts = {} },
 	{ "echasnovski/mini.comment", version = "*", opts = {} },
-	{ "echasnovski/mini.move", version = "*", opts = {} },
+	{
+		"echasnovski/mini.move",
+		version = "*",
+		opts = {
+			mappings = {
+				left = "<leader>mh",
+				right = "<leader>ml",
+				down = "<leader>mj",
+				up = "<leader>mk",
+				line_left = "<leader>mh",
+				line_right = "<leader>ml",
+				line_down = "<leader>mj",
+				line_up = "<leader>mk",
+			},
+		},
+	},
 	{ "echasnovski/mini.surround", version = "*", opts = {} },
 	{ "echasnovski/mini.cursorword", version = "*", opts = {} },
 	{ "echasnovski/mini.indentscope", version = "*", opts = {} },
