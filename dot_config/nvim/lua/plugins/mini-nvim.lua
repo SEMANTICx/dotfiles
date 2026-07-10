@@ -6,16 +6,17 @@
 -- ================================================================================================
 
 return {
-	{ "echasnovski/mini.ai", version = "*", opts = {} },
-	{ "echasnovski/mini.comment", version = "*", opts = {} },
-	{ "echasnovski/mini.move", version = "*", opts = {} },
-	{ "echasnovski/mini.surround", version = "*", opts = {} },
-	{ "echasnovski/mini.cursorword", version = "*", opts = {} },
-	{ "echasnovski/mini.indentscope", version = "*", opts = {} },
-	{ "echasnovski/mini.pairs", version = "*", opts = {} },
+	{ "echasnovski/mini.ai", version = "*", event = "VeryLazy", opts = {} },
+	{ "echasnovski/mini.comment", version = "*", event = "VeryLazy", opts = {} },
+	{ "echasnovski/mini.move", version = "*", event = "VeryLazy", opts = {} },
+	{ "echasnovski/mini.surround", version = "*", event = "VeryLazy", opts = {} },
+	{ "echasnovski/mini.cursorword", version = "*", event = "VeryLazy", opts = {} },
+	{ "echasnovski/mini.indentscope", version = "*", event = "VeryLazy", opts = {} },
+	{ "echasnovski/mini.pairs", version = "*", event = "InsertEnter", opts = {} },
 	{
 		"echasnovski/mini.trailspace",
 		version = "*",
+		lazy = true,
 		config = function()
 			require("mini.trailspace").setup()
 
@@ -38,6 +39,5 @@ return {
 			})
 		end,
 	},
-	{ "echasnovski/mini.bufremove", version = "*", opts = {} },
 	{ "echasnovski/mini.notify", version = "*", enabled = false },
 }

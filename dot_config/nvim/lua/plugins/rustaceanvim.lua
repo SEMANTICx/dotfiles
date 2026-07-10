@@ -14,19 +14,21 @@ local get_codelldb_adapter = function()
 		local ok, install_path = pcall(codelldb.get_install_path, codelldb)
 		local extension_path
 		if ok and install_path then
-			extension_path = install_path .. "/extension/"
+			extension_path = vim.fs.joinpath(install_path, "extension")
 		else
 			print("[error] getting codelldb install path, using fallback...")
-			extension_path = vim.fn.expand("~/.local/share/nvim/mason/packages/codelldb/extension/")
+			extension_path = vim.fs.joinpath(vim.fn.stdpath("data"), "mason", "packages", "codelldb", "extension")
 		end
-		local codelldb_path = extension_path .. "adapter/codelldb"
-		local base_path = extension_path .. "lldb/lib/liblldb"
+		local codelldb_path = vim.fs.joinpath(extension_path, "adapter", "codelldb")
+		local base_path = vim.fs.joinpath(extension_path, "lldb", "lib", "liblldb")
 		---@diagnostic disable-next-line: undefined-field (os_uname)
 		local this_os = vim.uv.os_uname().sysname
 		local liblldb_path = base_path .. (this_os == "Linux" and ".so" or ".dylib")
 		local cfg = require("rustaceanvim.config")
 		return cfg.get_codelldb_adapter(codelldb_path, liblldb_path)
 	end
+
+	return false
 end
 
 local config = function()
@@ -97,12 +99,10 @@ local config = function()
 			status_notify_level = false,
 			settings = rust_analyzer_settings,
 		},
-		dap = {},
+		dap = {
+			adapter = get_codelldb_adapter,
+		},
 	}
-	local ok, adapter = pcall(get_codelldb_adapter)
-	if ok then
-		settings.dap.adapter = adapter
-	end
 	vim.g.rustaceanvim = settings
 end
 

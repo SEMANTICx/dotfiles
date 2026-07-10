@@ -9,33 +9,11 @@ return {
 		{ "<leader>nt", "<cmd>Obsidian today<cr>", desc = "Today's daily note" },
 	},
 	config = function()
-		local function is_arch()
-			local f = io.open("/etc/os-release", "r")
-			if not f then
-				return false
-			end
-			local content = f:read("*a")
-			f:close()
-			content = (content or ""):lower()
-			return content:find("arch") ~= nil or content:find("artix") ~= nil
+		local workspace_path = vim.env.OBSIDIAN_VAULT
+		if not workspace_path or workspace_path == "" then
+			workspace_path = "~/Documents/Notes"
 		end
-
-		-- IMPORTANT: Obsidian.nvim requires at least one *valid* workspace.
-		-- The original config defaulted to a Linux-only VeraCrypt mount path,
-		-- which fails on macOS and triggers “At least one workspace is required!”.
-		local workspace_path
-
-		if vim.fn.has("mac") == 1 then
-			-- Change this to your vault directory if different.
-			-- Common alternatives:
-			--   iCloud: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/<Vault>
-			--   Dropbox: ~/Dropbox/<Vault>
-			workspace_path = vim.fn.expand("~/Documents/Notes")
-		elseif is_arch() then
-			workspace_path = vim.fn.expand("~/Documents/Notes")
-		else
-			workspace_path = "/run/media/veracrypt64/Notes/"
-		end
+		workspace_path = vim.fn.expand(workspace_path)
 
 		require("obsidian").setup({
 			legacy_commands = false,

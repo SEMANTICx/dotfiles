@@ -194,7 +194,34 @@ local function missing_treesitter_parsers(parsers)
 	return missing
 end
 
+local function undeclared_filetype_parsers(tools)
+	local declared = {}
+	local missing = {}
+	local seen = {}
+
+	for _, parser in ipairs(tools.treesitter_parsers) do
+		declared[parser] = true
+	end
+
+	for _, by_filetype in ipairs({ tools.formatters_by_ft, tools.linters_by_ft }) do
+		for filetype in pairs(by_filetype) do
+			local parser = vim.treesitter.language.get_lang(filetype) or filetype
+			if not declared[parser] and not seen[parser] then
+				seen[parser] = true
+				missing[#missing + 1] = string.format("%s (%s)", parser, filetype)
+			end
+		end
+	end
+
+	table.sort(missing)
+	return missing
+end
+
 local function check_lsp_configs(results, tools)
+	pcall(function()
+		require("lazy").load({ plugins = { "nvim-lspconfig" } })
+	end)
+
 	for _, server in ipairs(tools.lsp_servers) do
 		local config = vim.lsp.config[server]
 		if not config then
@@ -345,6 +372,15 @@ function M.collect()
 			#missing_parsers == 0 and "all installed" or table.concat(missing_parsers, ", ")
 		)
 	end
+
+	local undeclared_parsers = undeclared_filetype_parsers(tools)
+	add(
+		results,
+		#undeclared_parsers == 0 and "OK" or "WARN",
+		"Treesitter filetype coverage",
+		#undeclared_parsers == 0 and "all configured filetypes have declared parsers"
+			or table.concat(undeclared_parsers, ", ")
+	)
 
 	local missing_executables = {}
 	for _, tool in ipairs(flatten_tools(tools.formatters_by_ft, tools.linters_by_ft, tools.linter_commands)) do

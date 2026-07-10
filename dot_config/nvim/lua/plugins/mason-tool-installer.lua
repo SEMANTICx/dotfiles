@@ -12,7 +12,7 @@ return {
 	opts = {
 		ensure_installed = require("config.tools").mason_tools,
 		auto_update = false,
-		run_on_start = true,
+		run_on_start = vim.env.CI ~= "true",
 		start_delay = 3000,
 	},
 }

@@ -9,6 +9,7 @@
 
 return {
 	"neovim/nvim-lspconfig",
+	event = { "BufReadPre", "BufNewFile" },
 	dependencies = {
 		{ "mason-org/mason.nvim", opts = {} }, -- LSP/DAP/Linter installer & manager
 		"saghen/blink.cmp", -- completion capabilities for LSP clients

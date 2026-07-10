@@ -49,7 +49,7 @@ require("lazy").setup({
 			"nightfox",
 		},
 	},
-	checker = { enabled = true, notify = false },
+	checker = { enabled = vim.env.CI ~= "true", notify = false, frequency = 86400 },
 	change_detection = { notify = false },
 })
 

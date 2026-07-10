@@ -11,7 +11,7 @@ return {
 	dependencies = {
 		"rafamadriz/friendly-snippets",
 	},
-	lazy = false,
+	event = { "BufReadPre", "BufNewFile", "InsertEnter" },
 	opts = {
 		keymap = {
 			preset = "none",

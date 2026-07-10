@@ -4,7 +4,9 @@
 -- ================================================================================================
 
 -- Quick config editing
-vim.keymap.set("n", "<leader>rc", "<Cmd>e ~/.config/nvim/init.lua<CR>", { desc = "Edit config" })
+vim.keymap.set("n", "<leader>rc", function()
+	vim.cmd.edit(vim.fs.joinpath(vim.fn.stdpath("config"), "init.lua"))
+end, { desc = "Edit config" })
 
 vim.keymap.set("n", "j", function()
 	return vim.v.count == 0 and "gj" or "j"

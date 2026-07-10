@@ -7,7 +7,7 @@ local M = {}
 
 local ghosty_frame = 1
 local ghosty_timer
-local ghosty_frames
+local ghosty_frames = {}
 local ghosty_art_ns = vim.api.nvim_create_namespace("ghosty_dashboard_art")
 local ghosty_art_state
 local pause_dashboard_animation
@@ -15,16 +15,14 @@ local resume_dashboard_animation
 local dashboard_saved_laststatus
 
 local ghosty_frame_count = 100
+local ghosty_available_frame_count = ghosty_frame_count
 local ghosty_source_width = 100
 local ghosty_source_height = 41
 local ghosty_pane_gap = 10
-local ghosty_dashboard_width = math.max(0, vim.o.columns - 4)
-local ghosty_scale = ghosty_dashboard_width >= 160
-		and math.min(0.62, (ghosty_dashboard_width - ghosty_pane_gap) / (ghosty_source_width * 2))
-	or 0.58
-local ghosty_width = math.floor(ghosty_source_width * ghosty_scale + 0.5)
-local ghosty_height = math.floor(ghosty_source_height * ghosty_scale + 0.5)
-local ghosty_art_width = ghosty_width
+local ghosty_scale
+local ghosty_width
+local ghosty_height
+local ghosty_art_width
 local ghosty_title = "GhostyNVIM"
 local ghosty_title_padding = { 1, 2 }
 local ghosty_title_art = {
@@ -32,8 +30,29 @@ local ghosty_title_art = {
 	"█▄█ █▀█ █▄█ ▄█ ░█░ ░█░   █░▀█ ▀▄▀ █ █░▀░█",
 }
 
-M.width = ghosty_width
 M.pane_gap = ghosty_pane_gap
+
+local function update_ghosty_dimensions(columns)
+	local dashboard_width = math.max(0, (columns or vim.o.columns) - 4)
+	local scale = dashboard_width >= 160
+			and math.min(0.62, (dashboard_width - ghosty_pane_gap) / (ghosty_source_width * 2))
+		or math.min(0.58, math.max(0.3, dashboard_width / ghosty_source_width))
+	local width = math.max(1, math.floor(ghosty_source_width * scale + 0.5))
+	local height = math.max(1, math.floor(ghosty_source_height * scale + 0.5))
+
+	if scale ~= ghosty_scale then
+		ghosty_frames = {}
+		ghosty_art_state = nil
+	end
+
+	ghosty_scale = scale
+	ghosty_width = width
+	ghosty_height = height
+	ghosty_art_width = width
+	M.width = width
+end
+
+update_ghosty_dimensions(vim.o.columns)
 
 local function strip_ghostty_html(line)
 	return (line:gsub('<span class="b">', ""):gsub("</span>", ""):gsub("·", "."))
@@ -71,83 +90,42 @@ local function scale_ghostty_lines(lines)
 	return scaled
 end
 
-local function crop_ghostty_frames(frames)
-	local min_col = ghosty_width
-	local max_col = 1
+local function fallback_ghosty_frame()
+	local lines = {}
+	local title = vim.fn.strcharpart(ghosty_title, 0, ghosty_width)
+	local left = math.max(0, math.floor((ghosty_width - vim.fn.strdisplaywidth(title)) / 2))
 
-	for _, frame in ipairs(frames) do
-		for _, line in ipairs(frame) do
-			for col = 1, ghosty_width do
-				if vim.fn.strcharpart(line, col - 1, 1):match("%S") then
-					min_col = math.min(min_col, col)
-					max_col = math.max(max_col, col)
-				end
-			end
-		end
+	for row = 1, ghosty_height do
+		lines[row] = ""
 	end
-
-	if max_col < min_col then
-		return frames
-	end
-
-	ghosty_art_width = max_col - min_col + 1
-	for frame_index, frame in ipairs(frames) do
-		local cropped = {}
-		for line_index, line in ipairs(frame) do
-			cropped[line_index] = vim.fn.strcharpart(line, min_col - 1, max_col - min_col + 1)
-		end
-		frames[frame_index] = cropped
-	end
-
-	return frames
+	lines[math.max(1, math.ceil(ghosty_height / 2))] = string.rep(" ", left) .. title
+	return table.concat(lines, "\n")
 end
 
-local function load_ghosty_frames()
-	if ghosty_frames then
-		return ghosty_frames
+local function load_ghosty_frame(index)
+	if ghosty_frames[index] then
+		return ghosty_frames[index]
 	end
 
 	local dir = vim.fn.stdpath("config") .. "/assets/ghostty-animation"
-	local scaled_frames = {}
-
-	for index = 1, ghosty_frame_count do
-		local path = string.format("%s/frame_%03d.txt", dir, index)
-		if vim.fn.filereadable(path) == 0 then
-			break
-		end
-
-		local ok, lines = pcall(vim.fn.readfile, path)
-		if not ok then
-			break
-		end
-		if #lines == 0 then
-			break
-		end
-
-		for line_index, line in ipairs(lines) do
-			lines[line_index] = strip_ghostty_html(line)
-		end
-
-		scaled_frames[#scaled_frames + 1] = scale_ghostty_lines(lines)
+	local path = string.format("%s/frame_%03d.txt", dir, index)
+	local ok, lines = pcall(vim.fn.readfile, path)
+	if not ok or #lines == 0 then
+		ghosty_available_frame_count = math.max(1, index - 1)
+		ghosty_frames[1] = ghosty_frames[1] or fallback_ghosty_frame()
+		return ghosty_frames[1]
 	end
 
-	if #scaled_frames == 0 then
-		ghosty_art_width = vim.fn.strdisplaywidth(ghosty_title)
-		ghosty_frames = { ghosty_title }
-		return ghosty_frames
+	for line_index, line in ipairs(lines) do
+		lines[line_index] = strip_ghostty_html(line)
 	end
 
-	ghosty_frames = {}
-	for _, frame in ipairs(crop_ghostty_frames(scaled_frames)) do
-		ghosty_frames[#ghosty_frames + 1] = table.concat(frame, "\n")
-	end
-
-	return ghosty_frames
+	ghosty_frames[index] = table.concat(scale_ghostty_lines(lines), "\n")
+	return ghosty_frames[index]
 end
 
 local function ghosty_header()
-	local frames = load_ghosty_frames()
-	return frames[ghosty_frame]
+	return load_ghosty_frame(ghosty_frame)
 end
 
 local function ghosty_title_header()
@@ -223,9 +201,10 @@ local function paint_dashboard_background()
 	vim.b[buf].minitrailspace_disable = true
 	vim.api.nvim_win_call(win, function()
 		pcall(vim.fn.clearmatches, win)
-		pcall(function()
-			require("mini.trailspace").unhighlight()
-		end)
+		local trailspace = package.loaded["mini.trailspace"]
+		if trailspace then
+			pcall(trailspace.unhighlight)
+		end
 	end)
 	vim.wo[win].fillchars = "eob: "
 	vim.wo[win].winhighlight =
@@ -299,9 +278,8 @@ local function render_ghosty_frame()
 		return
 	end
 
-	local frames = load_ghosty_frames()
-	ghosty_frame = ghosty_frame % #frames + 1
-	local frame_lines = vim.split(frames[ghosty_frame], "\n", { plain = true })
+	ghosty_frame = ghosty_frame % ghosty_available_frame_count + 1
+	local frame_lines = vim.split(load_ghosty_frame(ghosty_frame), "\n", { plain = true })
 
 	vim.api.nvim_buf_clear_namespace(
 		buf,
@@ -338,9 +316,10 @@ local function start_dashboard_animation()
 	render_ghosty_frame()
 
 	ghosty_timer = vim.uv.new_timer()
+	local interval = tonumber(vim.g.dashboard_animation_interval) or 50
 	ghosty_timer:start(
-		50,
-		50,
+		interval,
+		interval,
 		vim.schedule_wrap(function()
 			render_ghosty_frame()
 		end)
@@ -408,7 +387,12 @@ end
 
 function M.sections()
 	return {
-		function()
+		function(dashboard)
+			local columns = dashboard and dashboard._size and dashboard._size.width or vim.o.columns
+			update_ghosty_dimensions(columns)
+			if dashboard then
+				dashboard.opts.width = ghosty_width
+			end
 			return {
 				header = ghosty_header(),
 				hl = "GhostyDashboardArt",
@@ -511,6 +495,16 @@ function M.setup()
 		callback = pause_dashboard_animation,
 	})
 	vim.api.nvim_create_autocmd("CmdlineLeave", {
+		group = group,
+		callback = function()
+			vim.schedule(resume_dashboard_animation)
+		end,
+	})
+	vim.api.nvim_create_autocmd("FocusLost", {
+		group = group,
+		callback = pause_dashboard_animation,
+	})
+	vim.api.nvim_create_autocmd("FocusGained", {
 		group = group,
 		callback = function()
 			vim.schedule(resume_dashboard_animation)

@@ -7,20 +7,6 @@
 
 return {
 	{
-		"xiyaowong/nvim-transparent",
-		lazy = false,
-		priority = 999,
-		opts = {
-			extra_groups = {
-				"OilDir",
-				"OilFile",
-				"CursorLine",
-				"NormalFloat",
-				"FloatBorder",
-			},
-		},
-	},
-	{
 		"EdenEast/nightfox.nvim",
 		lazy = false,
 		priority = 999,
