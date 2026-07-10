@@ -109,7 +109,13 @@ for _, case in ipairs(cases) do
 			assert(vim.fs.normalize(resolved_root) == vim.fs.normalize(root), "root_dir resolved outside the fixture")
 		end
 		config.root_dir = root
-		assert(vim.lsp.start(config, { bufnr = bufnr }), "vim.lsp.start did not return a client id")
+		config.name = case.name
+		if case.name == "ts_ls" then
+			local client_id = assert(vim.lsp.start_client(config), "vim.lsp.start_client did not return a client id")
+			assert(vim.lsp.buf_attach_client(bufnr, client_id), "vim.lsp.buf_attach_client failed")
+		else
+			assert(vim.lsp.start(config, { bufnr = bufnr }), "vim.lsp.start did not return a client id")
+		end
 
 		local attached = vim.wait(20000, function()
 			return #vim.lsp.get_clients({ bufnr = bufnr, name = case.name }) > 0
