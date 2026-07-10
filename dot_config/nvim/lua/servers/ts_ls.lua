@@ -7,6 +7,17 @@
 --- @param capabilities table LSP client capabilities from the completion engine
 --- @return nil
 return function(capabilities)
+	local project_markers = {
+		"package-lock.json",
+		"yarn.lock",
+		"pnpm-lock.yaml",
+		"bun.lockb",
+		"bun.lock",
+		"package.json",
+		"tsconfig.json",
+		"jsconfig.json",
+		".git",
+	}
 	local format = {
 		enable = false,
 	}
@@ -36,13 +47,22 @@ return function(capabilities)
 			"typescriptreact",
 			"javascriptreact",
 		},
-		root_markers = {
-			"package.json",
-			"tsconfig.json",
-			"jsconfig.json",
-			"deno.json",
-			"deno.jsonc",
-		},
+		workspace_required = true,
+		root_dir = function(bufnr, on_dir)
+			local filename = vim.api.nvim_buf_get_name(bufnr)
+			if filename == "" then
+				return
+			end
+
+			local project_root = vim.fs.root(filename, project_markers)
+			local deno_root = vim.fs.root(filename, { "deno.json", "deno.jsonc", "deno.lock" })
+			if deno_root and (not project_root or #deno_root >= #project_root) then
+				return
+			end
+			if project_root then
+				on_dir(project_root)
+			end
+		end,
 		settings = {
 			javascript = {
 				format = format,
