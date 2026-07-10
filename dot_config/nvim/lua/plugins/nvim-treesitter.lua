@@ -22,7 +22,7 @@ return {
 
 		local function missing_parsers()
 			local config = require("nvim-treesitter.config")
-			local already_installed = config.get_installed()
+			local already_installed = config.get_installed("parsers")
 			local parsers = {}
 
 			for _, parser in ipairs(tools.treesitter_parsers) do
@@ -47,7 +47,7 @@ return {
 		vim.api.nvim_create_autocmd("FileType", {
 			group = group,
 			callback = function(args)
-				if vim.list_contains(treesitter.get_installed(), vim.treesitter.language.get_lang(args.match)) then
+				if vim.list_contains(treesitter.get_installed("parsers"), vim.treesitter.language.get_lang(args.match)) then
 					vim.treesitter.start(args.buf)
 				end
 			end,

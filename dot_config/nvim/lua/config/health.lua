@@ -184,7 +184,7 @@ local function missing_treesitter_parsers(parsers)
 		return nil, "nvim-treesitter unavailable"
 	end
 
-	local installed = config.get_installed()
+	local installed = config.get_installed("parsers")
 	local missing = {}
 	for _, parser in ipairs(parsers) do
 		if not vim.tbl_contains(installed, parser) then

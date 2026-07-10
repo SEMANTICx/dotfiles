@@ -20,7 +20,7 @@ for _, name in ipairs(tools.mason_tools) do
 	end
 end
 
-local installed = require("nvim-treesitter.config").get_installed()
+local installed = require("nvim-treesitter.config").get_installed("parsers")
 for _, parser in ipairs(tools.treesitter_parsers) do
 	if not vim.tbl_contains(installed, parser) then
 		fail("Treesitter parser is not installed: " .. parser)

@@ -92,7 +92,7 @@ jobs:
       - name: Install TSX parser
         run: >-
           nvim --headless
-          "+lua assert(require('nvim-treesitter').install({ 'tsx' }):wait(120000))"
+          "+lua assert(require('nvim-treesitter').install({ 'tsx' }, { force = true }):wait(120000))"
           +qa
 
       - name: Run regression checks
@@ -182,7 +182,7 @@ jobs:
       - name: Install configured parsers
         run: >-
           nvim --headless
-          "+lua require('lazy').load({ plugins = { 'nvim-treesitter' } }); assert(require('nvim-treesitter').install(require('config.tools').treesitter_parsers, { max_jobs = 4, summary = true }):wait(600000))"
+          "+lua require('lazy').load({ plugins = { 'nvim-treesitter' } }); assert(require('nvim-treesitter').install(require('config.tools').treesitter_parsers, { force = true, max_jobs = 4, summary = true }):wait(600000))"
           +qa
 
       - name: Run toolchain checks
