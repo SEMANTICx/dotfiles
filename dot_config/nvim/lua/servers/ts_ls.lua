@@ -41,6 +41,7 @@ return function(capabilities)
 
 	vim.lsp.config("ts_ls", {
 		capabilities = capabilities,
+		cmd = { "typescript-language-server", "--stdio" },
 		filetypes = {
 			"typescript",
 			"javascript",
