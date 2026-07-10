@@ -48,8 +48,9 @@ jobs:
 
       - name: Install Yarn
         run: |
-          npm install --global yarn@1.22.22
+          npm install --global tree-sitter-cli@0.26.9 yarn@1.22.22
           node --version
+          tree-sitter --version
           yarn --version
 
       - name: Install system dependencies
@@ -137,7 +138,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends build-essential curl git ripgrep unzip
-          npm install --global yarn@1.22.22
+          npm install --global tree-sitter-cli@0.26.9 yarn@1.22.22
+          tree-sitter --version
 
       - name: Prepare isolated XDG directories
         run: |
