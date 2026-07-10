@@ -20,6 +20,7 @@ local cases = {
 		name = "lua_ls",
 		executable = "lua-language-server",
 		file = "main.lua",
+		filetype = "lua",
 		files = {
 			[".luarc.json"] = { "{}" },
 			["main.lua"] = { "local answer = 42", "return answer" },
@@ -29,6 +30,7 @@ local cases = {
 		name = "pyright",
 		executable = "pyright-langserver",
 		file = "main.py",
+		filetype = "python",
 		files = {
 			["pyproject.toml"] = { "[project]", 'name = "nvim-lsp-smoke"', 'version = "0.1.0"' },
 			["main.py"] = { "answer: int = 42", "print(answer)" },
@@ -38,6 +40,7 @@ local cases = {
 		name = "ts_ls",
 		executable = "typescript-language-server",
 		file = "main.ts",
+		filetype = "typescript",
 		files = {
 			["package.json"] = { '{"private":true}' },
 			["package-lock.json"] = { '{"lockfileVersion":3}' },
@@ -86,6 +89,7 @@ for _, case in ipairs(cases) do
 
 		vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(root, case.file)))
 		bufnr = vim.api.nvim_get_current_buf()
+		vim.bo[bufnr].filetype = case.filetype
 		local attached = vim.wait(20000, function()
 			return #vim.lsp.get_clients({ bufnr = bufnr, name = case.name }) > 0
 		end, 100)
