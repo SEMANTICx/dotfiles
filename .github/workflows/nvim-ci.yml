@@ -78,6 +78,11 @@ jobs:
             ${{ env.XDG_DATA_HOME }}/nvim/site
           key: nvim-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('dot_config/nvim/lazy-lock.json', '.github/workflows/nvim-ci.yml') }}
 
+      - name: Bootstrap locked lazy.nvim
+        run: >-
+          nvim --clean --headless
+          "+lua dofile(vim.fn.stdpath('config') .. '/tests/bootstrap.lua')"
+
       - name: Restore locked plugins
         run: nvim --headless "+Lazy! restore" +qa
 
@@ -155,6 +160,11 @@ jobs:
             ${{ env.XDG_DATA_HOME }}/nvim/mason
             ${{ env.XDG_DATA_HOME }}/nvim/site
           key: nvim-toolchain-${{ runner.os }}-${{ hashFiles('dot_config/nvim/lazy-lock.json', 'dot_config/nvim/lua/config/tools.lua') }}
+
+      - name: Bootstrap locked lazy.nvim
+        run: >-
+          nvim --clean --headless
+          "+lua dofile(vim.fn.stdpath('config') .. '/tests/bootstrap.lua')"
 
       - name: Restore locked plugins
         run: nvim --headless "+Lazy! restore" +qa
