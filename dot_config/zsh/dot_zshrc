@@ -33,6 +33,12 @@ setopt AUTOCD
 setopt NOBEEP
 setopt NUMERIC_GLOB_SORT # sort file10 after file9, not after file1
 
+# Point GPG pinentry at the current terminal without polluting scripts and
+# other non-TTY shell invocations.
+if [[ -t 0 ]]; then
+  export GPG_TTY="$(tty)"
+fi
+
 # =========================================================
 # Smart directory navigation & lf
 # =========================================================
