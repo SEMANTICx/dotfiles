@@ -61,6 +61,17 @@ local function stop_clients(bufnr)
 	end, 50)
 end
 
+local function lsp_log_tail()
+	local path = vim.lsp.log.get_filename()
+	if vim.fn.filereadable(path) == 0 then
+		return "LSP log is unavailable: " .. path
+	end
+
+	local lines = vim.fn.readfile(path)
+	local first = math.max(1, #lines - 19)
+	return table.concat(vim.list_slice(lines, first), "\n")
+end
+
 for _, case in ipairs(cases) do
 	checks = checks + 1
 	local bufnr
@@ -78,7 +89,16 @@ for _, case in ipairs(cases) do
 		local attached = vim.wait(20000, function()
 			return #vim.lsp.get_clients({ bufnr = bufnr, name = case.name }) > 0
 		end, 100)
-		assert(attached, "client did not attach within 20 seconds")
+		assert(
+			attached,
+			string.format(
+				"client did not attach within 20 seconds; active clients: %s; log tail:\n%s",
+				vim.inspect(vim.tbl_map(function(client)
+					return client.name
+				end, vim.lsp.get_clients())),
+				lsp_log_tail()
+			)
+		)
 
 		local client = assert(vim.lsp.get_clients({ bufnr = bufnr, name = case.name })[1])
 		assert(
