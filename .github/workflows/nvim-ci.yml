@@ -55,9 +55,10 @@ jobs:
 
       - name: Install Yarn
         run: |
-          npm install --global tree-sitter-cli@0.26.9 yarn@1.22.22
+          npm install --global tree-sitter-cli@0.26.9 typescript@7.0.2 typescript-language-server@5.3.0 yarn@1.22.22
           node --version
           tree-sitter --version
+          typescript-language-server --version
           yarn --version
 
       - name: Install system dependencies
@@ -106,7 +107,7 @@ jobs:
         run: >-
           nvim --headless
           "+lua require('lazy').load({ plugins = { 'mason.nvim' } })"
-          "+MasonInstall lua-language-server pyright typescript-language-server"
+          "+MasonInstall lua-language-server pyright"
           +qa
 
       - name: Run real LSP attachment checks
