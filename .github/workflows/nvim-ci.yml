@@ -1,0 +1,181 @@
+name: Neovim config CI
+
+on:
+  push:
+    paths:
+      - "dot_config/nvim/**"
+      - ".github/workflows/nvim-ci.yml"
+  pull_request:
+    paths:
+      - "dot_config/nvim/**"
+      - ".github/workflows/nvim-ci.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nvim-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    name: Neovim ${{ matrix.neovim }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim:
+          - stable
+          - nightly
+    env:
+      NVIM_CONFIG_DIR: ${{ github.workspace }}/dot_config/nvim
+      XDG_CONFIG_HOME: ${{ github.workspace }}/.ci/config
+      XDG_DATA_HOME: ${{ github.workspace }}/.ci/data
+      XDG_STATE_HOME: ${{ github.workspace }}/.ci/state
+      XDG_CACHE_HOME: ${{ github.workspace }}/.ci/cache
+
+    steps:
+      - name: Check out dotfiles
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@febef33995d6649302e9d88dda81e071b68f16a7 # v1
+        with:
+          version: ${{ matrix.neovim }}
+          neovim: true
+
+      - name: Install Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Install Yarn
+        run: |
+          npm install --global yarn@1.22.22
+          node --version
+          yarn --version
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends build-essential curl git ripgrep unzip
+
+      - name: Prepare isolated XDG directories
+        run: |
+          mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
+          ln -s "$NVIM_CONFIG_DIR" "$XDG_CONFIG_HOME/nvim"
+
+      - name: Cache plugins, parsers, and LSP servers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ${{ env.XDG_DATA_HOME }}/nvim/lazy
+            ${{ env.XDG_DATA_HOME }}/nvim/mason
+            ${{ env.XDG_DATA_HOME }}/nvim/site
+          key: nvim-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('dot_config/nvim/lazy-lock.json', '.github/workflows/nvim-ci.yml') }}
+
+      - name: Restore locked plugins
+        run: nvim --headless "+Lazy! restore" +qa
+
+      - name: Verify lockfile is unchanged
+        run: git diff --exit-code -- dot_config/nvim/lazy-lock.json
+
+      - name: Install TSX parser
+        run: >-
+          nvim --headless
+          "+lua assert(require('nvim-treesitter').install({ 'tsx' }):wait(120000))"
+          +qa
+
+      - name: Run regression checks
+        run: >-
+          nvim --headless
+          "+lua dofile(vim.fn.stdpath('config') .. '/tests/ci.lua')"
+
+      - name: Install LSP smoke-test servers
+        if: matrix.neovim == 'stable'
+        run: >-
+          nvim --headless
+          "+lua require('lazy').load({ plugins = { 'mason.nvim' } })"
+          "+MasonInstall lua-language-server pyright typescript-language-server"
+          +qa
+
+      - name: Run real LSP attachment checks
+        if: matrix.neovim == 'stable'
+        run: >-
+          nvim --headless
+          "+lua dofile(vim.fn.stdpath('config') .. '/tests/lsp.lua')"
+
+  toolchain:
+    name: Full toolchain
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      NVIM_CONFIG_DIR: ${{ github.workspace }}/dot_config/nvim
+      XDG_CONFIG_HOME: ${{ github.workspace }}/.ci/config
+      XDG_DATA_HOME: ${{ github.workspace }}/.ci/data
+      XDG_STATE_HOME: ${{ github.workspace }}/.ci/state
+      XDG_CACHE_HOME: ${{ github.workspace }}/.ci/cache
+
+    steps:
+      - name: Check out dotfiles
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install stable Neovim
+        uses: rhysd/action-setup-vim@febef33995d6649302e9d88dda81e071b68f16a7 # v1
+        with:
+          version: stable
+          neovim: true
+
+      - name: Install Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends build-essential curl git ripgrep unzip
+          npm install --global yarn@1.22.22
+
+      - name: Prepare isolated XDG directories
+        run: |
+          mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
+          ln -s "$NVIM_CONFIG_DIR" "$XDG_CONFIG_HOME/nvim"
+
+      - name: Cache complete toolchain
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ${{ env.XDG_DATA_HOME }}/nvim/lazy
+            ${{ env.XDG_DATA_HOME }}/nvim/mason
+            ${{ env.XDG_DATA_HOME }}/nvim/site
+          key: nvim-toolchain-${{ runner.os }}-${{ hashFiles('dot_config/nvim/lazy-lock.json', 'dot_config/nvim/lua/config/tools.lua') }}
+
+      - name: Restore locked plugins
+        run: nvim --headless "+Lazy! restore" +qa
+
+      - name: Verify lockfile is unchanged
+        run: git diff --exit-code -- dot_config/nvim/lazy-lock.json
+
+      - name: Install Mason tools
+        run: >-
+          nvim --headless
+          "+lua require('lazy').load({ plugins = { 'mason-tool-installer.nvim' } })"
+          "+MasonToolsInstallSync"
+          +qa
+
+      - name: Install configured parsers
+        run: >-
+          nvim --headless
+          "+lua require('lazy').load({ plugins = { 'nvim-treesitter' } }); assert(require('nvim-treesitter').install(require('config.tools').treesitter_parsers, { max_jobs = 4, summary = true }):wait(600000))"
+          +qa
+
+      - name: Run toolchain checks
+        run: >-
+          nvim --headless
+          "+lua dofile(vim.fn.stdpath('config') .. '/tests/toolchain.lua')"
