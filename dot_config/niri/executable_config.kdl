@@ -161,7 +161,7 @@ window-rule {
     open-floating true
 }
 window-rule {
-    match app-id="com.niri.quickteminal"
+    match app-id="com.niri.quickterminal"
     open-floating true
     default-floating-position x=20 y=20 relative-to="top"
 }
