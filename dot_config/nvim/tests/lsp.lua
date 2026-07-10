@@ -6,6 +6,15 @@ local function fail(name, detail)
 	vim.api.nvim_err_writeln(string.format("[FAIL] %s: %s", name, detail))
 end
 
+local function report_github_error(messages)
+	if vim.env.GITHUB_ACTIONS ~= "true" then
+		return
+	end
+
+	local detail = table.concat(messages, "\n"):gsub("%%", "%%25"):gsub("\r", "%%0D"):gsub("\n", "%%0A")
+	vim.api.nvim_out_write("::error title=Neovim LSP attachment::" .. detail .. "\n")
+end
+
 local cases = {
 	{
 		name = "lua_ls",
@@ -100,6 +109,7 @@ end
 vim.fn.delete(temp, "rf")
 
 if #failures > 0 then
+	report_github_error(failures)
 	vim.api.nvim_err_writeln(string.format("\n%d/%d LSP attachment checks failed:", #failures, checks))
 	for _, failure in ipairs(failures) do
 		vim.api.nvim_err_writeln("- " .. failure)
