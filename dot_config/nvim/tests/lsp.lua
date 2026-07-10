@@ -90,6 +90,7 @@ for _, case in ipairs(cases) do
 		vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(root, case.file)))
 		bufnr = vim.api.nvim_get_current_buf()
 		vim.bo[bufnr].filetype = case.filetype
+		vim.api.nvim_exec_autocmds("FileType", { buffer = bufnr, modeline = false })
 		local attached = vim.wait(20000, function()
 			return #vim.lsp.get_clients({ bufnr = bufnr, name = case.name }) > 0
 		end, 100)
