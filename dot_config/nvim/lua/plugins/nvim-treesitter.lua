@@ -16,7 +16,9 @@ return {
 		local treesitter = require("nvim-treesitter")
 		local tools = require("config.tools")
 
-		treesitter.setup({})
+		treesitter.setup({
+			install_dir = vim.fs.joinpath(vim.fn.stdpath("data"), "site"),
+		})
 
 		local function missing_parsers()
 			local config = require("nvim-treesitter.config")
