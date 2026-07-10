@@ -1,6 +1,8 @@
 local failures = {}
 local checks = 0
 
+vim.lsp.set_log_level("debug")
+
 local function fail(name, detail)
 	failures[#failures + 1] = string.format("%s: %s", name, detail)
 	vim.api.nvim_err_writeln(string.format("[FAIL] %s: %s", name, detail))
