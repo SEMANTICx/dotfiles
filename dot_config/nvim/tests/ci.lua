@@ -75,6 +75,17 @@ local treesitter_ok, treesitter_err = pcall(function()
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "const App = () => <main>Hello</main>" })
 	vim.bo[buf].filetype = "typescriptreact"
+	local parser_files = vim.api.nvim_get_runtime_file("parser/tsx.*", false)
+	local language_ok, language_result = pcall(vim.treesitter.language.add, "tsx")
+	assert(
+		language_ok and language_result,
+		string.format(
+			"TSX language load failed on Neovim %s: %s; parser files: %s",
+			vim.version().major .. "." .. vim.version().minor .. "." .. vim.version().patch,
+			language_ok and vim.inspect(language_result) or language_result,
+			vim.inspect(parser_files)
+		)
+	)
 	local parser, parser_err = vim.treesitter.get_parser(buf, "tsx")
 	assert(parser, parser_err or "TSX parser is unavailable")
 	parser:parse()
