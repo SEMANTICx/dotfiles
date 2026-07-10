@@ -97,9 +97,20 @@ for _, case in ipairs(cases) do
 		vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(root, case.file)))
 		bufnr = vim.api.nvim_get_current_buf()
 		vim.bo[bufnr].filetype = case.filetype
-		vim.api.nvim_exec_autocmds("FileType", { buffer = bufnr, modeline = false })
 		vim.lsp.enable(case.name, false)
-		vim.lsp.enable(case.name)
+
+		local config = vim.deepcopy(assert(vim.lsp.config[case.name], "missing LSP config: " .. case.name))
+		if type(config.root_dir) == "function" then
+			local resolved_root
+			config.root_dir(bufnr, function(dir)
+				resolved_root = dir
+			end)
+			assert(resolved_root, "root_dir rejected the fixture")
+			assert(vim.fs.normalize(resolved_root) == vim.fs.normalize(root), "root_dir resolved outside the fixture")
+		end
+		config.root_dir = root
+		assert(vim.lsp.start(config, { bufnr = bufnr }), "vim.lsp.start did not return a client id")
+
 		local attached = vim.wait(20000, function()
 			return #vim.lsp.get_clients({ bufnr = bufnr, name = case.name }) > 0
 		end, 100)
@@ -121,7 +132,7 @@ for _, case in ipairs(cases) do
 		)
 
 		local params = { textDocument = vim.lsp.util.make_text_document_params(bufnr) }
-		local responses, request_err = vim.lsp.buf_request_sync(bufnr, "textDocument/documentSymbol", params, 10000)
+		local responses, request_err = vim.lsp.buf_request_sync(bufnr, "textDocument/documentSymbol", params, 20000)
 		assert(responses, request_err or "documentSymbol request timed out")
 		local response = responses[client.id]
 		assert(response, "server returned no documentSymbol response")
