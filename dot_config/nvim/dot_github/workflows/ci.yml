@@ -104,9 +104,10 @@ jobs:
 
       - name: Run real LSP attachment checks
         if: matrix.neovim == 'stable'
-        run: >-
-          nvim --headless
-          "+lua dofile(vim.fn.stdpath('config') .. '/tests/lsp.lua')"
+        run: |
+          for server in lua_ls pyright ts_ls; do
+            NVIM_LSP_CASE="$server" nvim --headless "+lua dofile(vim.fn.stdpath('config') .. '/tests/lsp.lua')"
+          done
 
   toolchain:
     name: Full toolchain

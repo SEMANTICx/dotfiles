@@ -50,6 +50,13 @@ local cases = {
 	},
 }
 
+if vim.env.NVIM_LSP_CASE and vim.env.NVIM_LSP_CASE ~= "" then
+	cases = vim.tbl_filter(function(case)
+		return case.name == vim.env.NVIM_LSP_CASE
+	end, cases)
+	assert(#cases == 1, "unknown NVIM_LSP_CASE: " .. vim.env.NVIM_LSP_CASE)
+end
+
 require("lazy").load({ plugins = { "nvim-lspconfig" } })
 
 local temp = vim.fn.tempname()
