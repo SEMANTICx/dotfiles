@@ -1,0 +1,30 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "share": "manual",
+  "instructions": [
+    "AGENTS.md"
+  ],
+  "command": {
+    "check": {
+      "description": "Run the smallest relevant project checks",
+      "template": "Inspect the project metadata, then run the smallest relevant test, lint, and type-check commands. Do not change files. Summarize failures with file paths and actionable causes."
+    },
+    "review": {
+      "description": "Review the current working tree",
+      "template": "Review the current git diff for correctness, regressions, security issues, and missing tests. Do not edit files. Report findings by severity with precise file locations."
+    }
+  },
+  "permission": {
+    "edit": "ask",
+    "external_directory": "ask",
+    "webfetch": "ask",
+    "websearch": "ask",
+    "bash": {
+      "*": "ask",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "git show*": "allow"
+    }
+  }
+}

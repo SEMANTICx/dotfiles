@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if (($# < 2 || $# > 4)); then
+  printf 'Usage: %s URL TITLE [DESCRIPTION] [FEED_TITLE]\n' "${0##*/}" >&2
+  exit 2
+fi
+
+url=$1
+title=$2
+description=${3-}
+feed_title=${4-}
+data_dir=${XDG_DATA_HOME:-"${HOME}/.local/share"}/newsboat
+bookmark_file=${NEWSBOAT_BOOKMARK_FILE:-"${data_dir}/bookmarks.tsv"}
+
+install -d -m 0700 -- "$(dirname -- "${bookmark_file}")"
+umask 077
+
+sanitize_tsv() {
+  local value=$1
+  value=${value//$'\r'/ }
+  value=${value//$'\n'/ }
+  value=${value//$'\t'/ }
+  printf '%s' "${value}"
+}
+
+exec 9>>"${bookmark_file}"
+flock -x 9
+printf '%s\t%s\t%s\t%s\t%s\n' \
+  "$(date --iso-8601=seconds)" \
+  "$(sanitize_tsv "${title}")" \
+  "$(sanitize_tsv "${url}")" \
+  "$(sanitize_tsv "${feed_title}")" \
+  "$(sanitize_tsv "${description}")" >&9
+flock -u 9
+
+printf 'Bookmark saved to %s\n' "${bookmark_file}"
+if command -v notify-send >/dev/null 2>&1; then
+  notify-send --app-name=Newsboat --urgency=low "Newsboat bookmark saved" "${title}" >/dev/null 2>&1 || true
+fi

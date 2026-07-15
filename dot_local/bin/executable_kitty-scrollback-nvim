@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+runtime_directory=${XDG_RUNTIME_DIR:-/tmp}
+[[ -d ${runtime_directory} ]] || runtime_directory=/tmp
+umask 077
+scrollback_file=$(mktemp "${runtime_directory}/kitty-scrollback.XXXXXXXX")
+
+cleanup() {
+  rm -f -- "${scrollback_file}"
+}
+trap cleanup EXIT HUP INT TERM
+
+cat >"${scrollback_file}"
+export KITTY_SCROLLBACK_FILE=${scrollback_file}
+
+"${NVIM:-nvim}" -u NONE -i NONE -n \
+  -c 'set clipboard=unnamedplus' \
+  -c 'execute "terminal cat -- " . shellescape($KITTY_SCROLLBACK_FILE)' \
+  -c 'setlocal bufhidden=wipe' \
+  -c 'normal! G' \
+  -c 'nnoremap <buffer> q <cmd>qa!<cr>' \
+  -c 'tnoremap <buffer> q <C-\><C-n><cmd>qa!<cr>'

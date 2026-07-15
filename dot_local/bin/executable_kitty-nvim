@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+revision=
+
+usage() {
+  cat <<'EOF'
+Usage: kitty-nvim [--diff[=REVISION]] [--] [PATH ...]
+
+Open files or a directory in a detached Kitty window running Neovim.
+With --diff, open Diffview for REVISION (default: HEAD~1). This mode checks
+that the target is inside a Git repository and that the revision exists.
+EOF
+}
+
+while (($# > 0)); do
+  case $1 in
+    --diff)
+      revision=HEAD~1
+      shift
+      ;;
+    --diff=*)
+      revision=${1#*=}
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      printf 'Unknown option: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if (($# == 0)); then
+  set -- .
+fi
+
+targets=()
+for target in "$@"; do
+  targets+=("$(realpath -m -- "${target}")")
+done
+
+first_target=${targets[0]}
+if [[ -d ${first_target} ]]; then
+  working_directory=${first_target}
+else
+  working_directory=$(dirname -- "${first_target}")
+fi
+[[ -d ${working_directory} ]] || {
+  printf 'Working directory does not exist: %s\n' "${working_directory}" >&2
+  exit 1
+}
+
+nvim_options=()
+if [[ -n ${revision} ]]; then
+  if [[ ! ${revision} =~ ^[[:alnum:]_./@{}~^:+-]+$ ]]; then
+    printf 'Unsafe or invalid Git revision: %s\n' "${revision}" >&2
+    exit 2
+  fi
+  git_root=$(git -C "${working_directory}" rev-parse --show-toplevel 2>/dev/null) || {
+    printf 'Diff mode requires a Git repository: %s\n' "${working_directory}" >&2
+    exit 1
+  }
+  git -C "${git_root}" rev-parse --verify --quiet "${revision}^{commit}" >/dev/null || {
+    printf 'Git revision does not exist: %s\n' "${revision}" >&2
+    exit 1
+  }
+  working_directory=${git_root}
+  nvim_options=(-c "DiffviewOpen ${revision}")
+fi
+
+exec kitty --detach --directory="${working_directory}" nvim "${nvim_options[@]}" -- "${targets[@]}"

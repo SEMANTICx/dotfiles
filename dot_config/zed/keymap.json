@@ -1,0 +1,44 @@
+[
+  {
+    "context": "Terminal",
+    "bindings": {
+      "ctrl-w": null,
+      "ctrl-w h": "workspace::ActivatePaneLeft",
+      "ctrl-w j": "workspace::ActivatePaneDown",
+      "ctrl-w k": "workspace::ActivatePaneUp",
+      "ctrl-w l": "workspace::ActivatePaneRight",
+      "ctrl-w shift-h": "workspace::SwapPaneLeft",
+      "ctrl-w shift-j": "workspace::SwapPaneDown",
+      "ctrl-w shift-k": "workspace::SwapPaneUp",
+      "ctrl-w shift-l": "workspace::SwapPaneRight",
+      "ctrl-w q": "pane::CloseActiveItem"
+    }
+  },
+  {
+    "context": "Editor && vim_mode == normal",
+    "bindings": {
+      "g [": "editor::GoToPreviousDiagnostic",
+      "g ]": "editor::GoToDiagnostic",
+      "g r": "editor::FindAllReferences",
+      "space r n": "editor::Rename",
+      "space c a": "editor::ToggleCodeActions",
+      "space t i": "editor::ToggleInlayHints",
+      "ctrl-w h": "workspace::ActivatePaneLeft",
+      "ctrl-w j": "workspace::ActivatePaneDown",
+      "ctrl-w k": "workspace::ActivatePaneUp",
+      "ctrl-w l": "workspace::ActivatePaneRight"
+    }
+  },
+  {
+    "context": "ProjectPanel && not_editing",
+    "bindings": {
+      "h": "project_panel::CollapseSelectedEntry",
+      "j": "vim::MenuSelectNext",
+      "k": "vim::MenuSelectPrevious",
+      "l": "project_panel::ExpandSelectedEntry",
+      "enter": "project_panel::OpenPermanent",
+      "shift-r": "project_panel::Rename",
+      "shift-d": "project_panel::Delete"
+    }
+  }
+]

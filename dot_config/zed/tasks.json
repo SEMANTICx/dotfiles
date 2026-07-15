@@ -1,0 +1,10 @@
+[
+  {
+    "label": "LaTeX: Forward Search in Okular",
+    "command": "okular --unique \"$ZED_DIRNAME/$ZED_STEM.pdf#src:$ZED_ROW\"",
+    "allow_concurrent_runs": false,
+    "use_new_terminal": false,
+    "reveal": "no_focus",
+    "hide": "on_success"
+  }
+]

@@ -1,0 +1,26 @@
+browser "xdg-open %u"
+
+bookmark-cmd "newsboat-bookmark"
+bookmark-interactive yes
+bookmark-autopilot no
+
+auto-reload yes
+reload-time 60
+refresh-on-startup yes
+reload-threads 8
+
+max-items 1000
+keep-articles-days 180
+cleanup-on-quit yes
+
+bind-key j down
+bind-key k up
+bind-key h quit
+bind-key l open
+bind-key g home
+bind-key G end
+bind-key f pagedown
+bind-key b pageup
+bind-key r reload
+bind-key R reload-all
+bind-key u show-urls

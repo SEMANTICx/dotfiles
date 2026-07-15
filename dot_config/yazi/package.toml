@@ -53,5 +53,10 @@ use = "yazi-rs/plugins:mount"
 rev = "8cd50c6"
 hash = "e3260d0b1feded8c8e3ae3afa1169e30"
 
+[[plugin.deps]]
+use = "uhs-robert/recycle-bin"
+rev = "fa68711"
+hash = "8714306b5cac6359edbacbf545fbd691"
+
 [flavor]
 deps = []

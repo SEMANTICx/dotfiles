@@ -69,6 +69,11 @@ run = "plugin mount"
 desc = "Mount manager"
 
 [[mgr.prepend_keymap]]
+on = [ "R", "b" ]
+run = "plugin recycle-bin"
+desc = "Open Recycle Bin menu"
+
+[[mgr.prepend_keymap]]
 on = "<F3>"
 run = "plugin mediainfo -- toggle-metadata"
 desc = "Toggle media metadata"

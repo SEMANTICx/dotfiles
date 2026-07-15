@@ -1,0 +1,46 @@
+[
+  {
+    "key": "ctrl+shift+k",
+    "command": "vscode-neovim.send",
+    "when": "editorTextFocus && neovim.mode != insert",
+    "args": "<C-S-k>"
+  },
+  {
+    "key": "ctrl+shift+j",
+    "command": "vscode-neovim.send",
+    "when": "editorTextFocus && neovim.mode != insert",
+    "args": "<C-S-j>"
+  },
+  {
+    "key": "ctrl+shift+h",
+    "command": "vscode-neovim.send",
+    "when": "editorTextFocus && neovim.mode != insert",
+    "args": "<C-S-h>"
+  },
+  {
+    "key": "ctrl+shift+l",
+    "command": "vscode-neovim.send",
+    "when": "editorTextFocus && neovim.mode != insert",
+    "args": "<C-S-l>"
+  },
+  {
+    "key": "ctrl+w h",
+    "command": "workbench.action.navigateLeft",
+    "when": "editorTextFocus || terminalFocus"
+  },
+  {
+    "key": "ctrl+w j",
+    "command": "workbench.action.navigateDown",
+    "when": "editorTextFocus || terminalFocus"
+  },
+  {
+    "key": "ctrl+w k",
+    "command": "workbench.action.navigateUp",
+    "when": "editorTextFocus || terminalFocus"
+  },
+  {
+    "key": "ctrl+w l",
+    "command": "workbench.action.navigateRight",
+    "when": "editorTextFocus || terminalFocus"
+  }
+]

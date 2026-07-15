@@ -1,0 +1,69 @@
+" Portable Tridactyl configuration for Firefox and Zen.
+" It intentionally avoids xdotool and site-specific selectors so it works on Wayland.
+
+set configversion 2.0
+set theme auto
+set hintfiltermode simple
+set hintnames short
+set hintdelay 100
+set hintchars hjklasdfgyuiopqwertnmzxcvb
+set newtab about:blank
+
+" Tabs and browser history
+bind J tabnext
+bind K tabprev
+bind H back
+bind L forward
+bind g0 tabfirst
+bind g$ tablast
+bind d tabclose
+bind D composite tabprev ; tabclose #
+bind u undo
+bind U undo window
+
+" Scrolling and jumps
+bind j scrollline 10
+bind k scrollline -10
+bind h scrollpx -50
+bind l scrollpx 50
+bind gg scrollto 0
+bind G scrollto 100
+bind <C-u> scrollpage -0.5
+bind <C-d> scrollpage 0.5
+bind <C-o> jumpprev
+bind <C-i> jumpnext
+
+" Links, search, and reader mode
+bind f hint
+bind F hint -b
+bind o fillcmdline open
+bind O current_url open
+bind t fillcmdline tabopen
+bind T current_url tabopen
+bind s fillcmdline open search
+bind S fillcmdline tabopen search
+bind gr reader
+bind gR reader --tab
+bind / fillcmdline find
+bind n findnext --search-from-view
+bind N findnext --search-from-view --reverse
+bind ]] followpage next
+bind [[ followpage prev
+
+" URL and clipboard helpers
+bind gu urlparent
+bind gU urlroot
+bind [c urlincrement -1
+bind ]c urlincrement 1
+bind yy clipboard yank
+bind ys clipboard yankshort
+bind yc clipboard yankcanon
+bind ym clipboard yankmd
+bind yt clipboard yanktitle
+bind p clipboard open
+bind P clipboard tabopen
+
+bind r reload
+bind R reloadhard
+bind <Escape> composite mode normal ; hidecmdline
+bind <C-[> composite mode normal ; hidecmdline

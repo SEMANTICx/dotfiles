@@ -1,0 +1,3 @@
+aider-chat v0.86.2
+aider-install v0.2.0
+ida-pro-mcp v2.0.0

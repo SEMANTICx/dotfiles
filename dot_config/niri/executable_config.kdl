@@ -170,6 +170,7 @@ include "dms/binds.kdl"
 include "dms/alttab.kdl"
 include "dms/supertab.kdl"
 include optional=true "shorin-windowrules.kdl"
+include optional=true "privacy-windowrules.kdl"
 include optional=true "dms/windowrules.kdl"
 include "dms/cursor.kdl"
 include "dms/outputs.kdl"
@@ -177,4 +178,3 @@ include "dms/colors.kdl"
 
 // 取消下面这行的注释启动shorin预先准备好的blur配置
 include "blur.kdl"
-

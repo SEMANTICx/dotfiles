@@ -1,0 +1,331 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+force=0
+cpu_only=0
+temporary_directory=
+
+usage() {
+  cat <<'EOF'
+Usage: video-process [--force] [--cpu] COMMAND ...
+
+Commands:
+  analyze INPUT
+      Print EBU R128 loudness measurements.
+
+  trim INPUT OUTPUT START_TRIM END_TRIM
+      Remove time from the beginning and end. Times can be seconds or HH:MM:SS.
+
+  normalize INPUT OUTPUT [TARGET_LUFS]
+      Two-pass EBU R128 normalization. TARGET_LUFS defaults to -16.
+
+  mix INPUT MUSIC OUTPUT [MUSIC_VOLUME] [PROGRAM_VOLUME]
+      Loop and mix background music. Volumes default to 0.20 and 1.0.
+
+  process INPUT OUTPUT START_TRIM END_TRIM [MUSIC|-] [TARGET_LUFS] [MUSIC_VOLUME]
+      Trim, normalize, and optionally add background music.
+
+Options:
+  --force  overwrite an existing output file
+  --cpu    skip NVENC and use libx264 when video re-encoding is required
+EOF
+}
+
+die() {
+  printf 'Error: %s\n' "$*" >&2
+  exit 1
+}
+
+info() {
+  printf '[video-process] %s\n' "$*"
+}
+
+notify() {
+  local urgency=$1
+  local title=$2
+  local body=$3
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send --app-name=video-process --urgency="${urgency}" "${title}" "${body}" >/dev/null 2>&1 || true
+  fi
+}
+
+cleanup() {
+  if [[ -n ${temporary_directory} ]]; then
+    rm -rf -- "${temporary_directory}"
+  fi
+}
+trap cleanup EXIT HUP INT TERM
+
+require_file() {
+  [[ -f $1 ]] || die "File not found: $1"
+}
+
+ensure_output() {
+  local output=$1
+  [[ -d $(dirname -- "${output}") ]] || die "Output directory does not exist: $(dirname -- "${output}")"
+  if [[ -e ${output} && ${force} -eq 0 ]]; then
+    die "Output already exists (use --force): ${output}"
+  fi
+}
+
+has_audio() {
+  [[ -n $(ffprobe -v error -select_streams a:0 -show_entries stream=index -of csv=p=0 -- "$1") ]]
+}
+
+parse_time() {
+  LC_ALL=C awk -v value="$1" '
+    BEGIN {
+      count = split(value, part, ":")
+      if (count == 1 && value ~ /^[0-9]+([.][0-9]+)?$/) {
+        printf "%.3f\n", value
+        exit 0
+      }
+      if (count == 2 && part[1] ~ /^[0-9]+$/ && part[2] ~ /^[0-9]+([.][0-9]+)?$/) {
+        printf "%.3f\n", part[1] * 60 + part[2]
+        exit 0
+      }
+      if (count == 3 && part[1] ~ /^[0-9]+$/ && part[2] ~ /^[0-9]+$/ && part[3] ~ /^[0-9]+([.][0-9]+)?$/) {
+        printf "%.3f\n", part[1] * 3600 + part[2] * 60 + part[3]
+        exit 0
+      }
+      exit 1
+    }
+  ' || die "Invalid time: $1"
+}
+
+validate_number() {
+  [[ $2 =~ ^-?[0-9]+([.][0-9]+)?$ ]] || die "Invalid ${1}: ${2}"
+}
+
+container_options() {
+  case ${1,,} in
+    *.mp4|*.m4v|*.mov)
+      printf '%s\n' '-movflags' '+faststart'
+      ;;
+  esac
+}
+
+run_video_encode() {
+  local output=$1
+  shift
+  local -a mux_options=()
+  mapfile -t mux_options < <(container_options "${output}")
+
+  if ((cpu_only == 0)) && grep -q '[[:space:]]h264_nvenc[[:space:]]' <<<"$(ffmpeg -hide_banner -encoders 2>/dev/null)"; then
+    info 'Encoding video with NVIDIA NVENC'
+    if ffmpeg -hide_banner "${overwrite[@]}" "$@" \
+      -c:v h264_nvenc -preset p5 -tune hq -cq 23 -b:v 0 \
+      -c:a aac -b:a 192k -pix_fmt yuv420p "${mux_options[@]}" "${output}"; then
+      return 0
+    fi
+    printf 'NVENC failed; retrying with libx264.\n' >&2
+    rm -f -- "${output}"
+  fi
+
+  info 'Encoding video with libx264'
+  ffmpeg -hide_banner "${overwrite[@]}" "$@" \
+    -c:v libx264 -preset medium -crf 23 \
+    -c:a aac -b:a 192k -pix_fmt yuv420p "${mux_options[@]}" "${output}"
+}
+
+analyze_audio() {
+  local input=$1
+  require_file "${input}"
+  has_audio "${input}" || die "No audio stream found: ${input}"
+  ffmpeg -hide_banner -nostats -i "${input}" -map 0:a:0 \
+    -af 'ebur128=peak=true' -f null - 2>&1 | tail -n 35
+}
+
+trim_video() {
+  local input=$1
+  local output=$2
+  local start_input=$3
+  local end_input=$4
+  require_file "${input}"
+  ensure_output "${output}"
+
+  local start_seconds end_seconds duration usable
+  start_seconds=$(parse_time "${start_input}")
+  end_seconds=$(parse_time "${end_input}")
+  duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 -- "${input}")
+  validate_number duration "${duration}"
+  usable=$(LC_ALL=C awk -v total="${duration}" -v start="${start_seconds}" -v end="${end_seconds}" 'BEGIN { printf "%.3f", total - start - end }')
+  LC_ALL=C awk -v value="${usable}" 'BEGIN { exit !(value > 0) }' || die 'Trim values remove the entire video'
+
+  info "Trimming ${start_seconds}s from start and ${end_seconds}s from end"
+  run_video_encode "${output}" \
+    -ss "${start_seconds}" -i "${input}" -t "${usable}" \
+    -map 0:v:0 -map '0:a?' -map_metadata 0
+}
+
+normalize_audio() {
+  local input=$1
+  local output=$2
+  local target=${3:--16}
+  require_file "${input}"
+  ensure_output "${output}"
+  has_audio "${input}" || die "No audio stream found: ${input}"
+  validate_number target_lufs "${target}"
+
+  info "Measuring loudness for two-pass normalization to ${target} LUFS"
+  local analysis json
+  analysis=$(ffmpeg -hide_banner -nostats -i "${input}" -map 0:a:0 \
+    -af "loudnorm=I=${target}:LRA=11:TP=-1.5:print_format=json" -f null - 2>&1 || true)
+  json=$(printf '%s\n' "${analysis}" | awk '
+    /^[[:space:]]*\{/ { capture = 1 }
+    capture { print }
+    capture && /^[[:space:]]*\}/ { exit }
+  ')
+  [[ -n ${json} ]] || die 'FFmpeg did not return loudness measurements'
+  printf '%s\n' "${json}" | jq -e '.input_i != "-inf" and .input_tp != "-inf"' >/dev/null \
+    || die 'Audio is silent or loudness measurements are invalid'
+
+  local input_i input_lra input_tp input_thresh target_offset
+  input_i=$(jq -r '.input_i' <<<"${json}")
+  input_lra=$(jq -r '.input_lra' <<<"${json}")
+  input_tp=$(jq -r '.input_tp' <<<"${json}")
+  input_thresh=$(jq -r '.input_thresh' <<<"${json}")
+  target_offset=$(jq -r '.target_offset' <<<"${json}")
+
+  local filter
+  filter="loudnorm=I=${target}:LRA=11:TP=-1.5:measured_I=${input_i}:measured_LRA=${input_lra}:measured_TP=${input_tp}:measured_thresh=${input_thresh}:offset=${target_offset}:linear=true:print_format=summary"
+  local -a mux_options=()
+  mapfile -t mux_options < <(container_options "${output}")
+  ffmpeg -hide_banner "${overwrite[@]}" -i "${input}" \
+    -map '0:v?' -map 0:a:0 -map_metadata 0 \
+    -c:v copy -af "${filter}" -c:a aac -b:a 192k \
+    "${mux_options[@]}" "${output}"
+}
+
+mix_audio() {
+  local input=$1
+  local music=$2
+  local output=$3
+  local music_volume=${4:-0.20}
+  local program_volume=${5:-1.0}
+  require_file "${input}"
+  require_file "${music}"
+  ensure_output "${output}"
+  has_audio "${input}" || die "No audio stream found: ${input}"
+  has_audio "${music}" || die "No audio stream found: ${music}"
+  validate_number music_volume "${music_volume}"
+  validate_number program_volume "${program_volume}"
+
+  local filter
+  filter="[0:a:0]volume=${program_volume}[program];[1:a:0]volume=${music_volume}[music];[program][music]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[mixed]"
+  local -a mux_options=()
+  mapfile -t mux_options < <(container_options "${output}")
+  info "Mixing background music at volume ${music_volume}"
+  ffmpeg -hide_banner "${overwrite[@]}" -i "${input}" -stream_loop -1 -i "${music}" \
+    -filter_complex "${filter}" -map 0:v:0 -map '[mixed]' -map_metadata 0 \
+    -c:v copy -c:a aac -b:a 192k -shortest "${mux_options[@]}" "${output}"
+}
+
+process_video() {
+  local input=$1
+  local output=$2
+  local start_trim=$3
+  local end_trim=$4
+  local music=${5:--}
+  local target=${6:--16}
+  local music_volume=${7:-0.20}
+  require_file "${input}"
+  ensure_output "${output}"
+
+  temporary_directory=$(mktemp -d "${TMPDIR:-/tmp}/video-process.XXXXXXXX")
+  local current=${input}
+  if [[ ${start_trim} != 0 || ${end_trim} != 0 ]]; then
+    trim_video "${current}" "${temporary_directory}/trimmed.mkv" "${start_trim}" "${end_trim}"
+    current=${temporary_directory}/trimmed.mkv
+  fi
+
+  normalize_audio "${current}" "${temporary_directory}/normalized.mkv" "${target}"
+  current=${temporary_directory}/normalized.mkv
+
+  if [[ ${music} != - ]]; then
+    mix_audio "${current}" "${music}" "${output}" "${music_volume}" 1.0
+  else
+    local -a mux_options=()
+    mapfile -t mux_options < <(container_options "${output}")
+    ffmpeg -hide_banner "${overwrite[@]}" -i "${current}" -map 0 -c copy \
+      "${mux_options[@]}" "${output}"
+  fi
+}
+
+for command_name in ffmpeg ffprobe jq awk; do
+  command -v "${command_name}" >/dev/null 2>&1 || die "Required command not found: ${command_name}"
+done
+
+while (($# > 0)); do
+  case $1 in
+    --force)
+      force=1
+      shift
+      ;;
+    --cpu)
+      cpu_only=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      die "Unknown option: $1"
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if (($# == 0)); then
+  usage >&2
+  exit 2
+fi
+
+if ((force)); then
+  overwrite=(-y)
+else
+  overwrite=(-n)
+fi
+
+command_name=$1
+shift
+case ${command_name} in
+  analyze)
+    (($# == 1)) || die 'analyze requires INPUT'
+    analyze_audio "$1"
+    ;;
+  trim)
+    (($# == 4)) || die 'trim requires INPUT OUTPUT START_TRIM END_TRIM'
+    trim_video "$1" "$2" "$3" "$4"
+    notify normal 'Video trim complete' "$2"
+    ;;
+  normalize)
+    (($# >= 2 && $# <= 3)) || die 'normalize requires INPUT OUTPUT [TARGET_LUFS]'
+    normalize_audio "$1" "$2" "${3:--16}"
+    notify normal 'Audio normalization complete' "$2"
+    ;;
+  mix)
+    (($# >= 3 && $# <= 5)) || die 'mix requires INPUT MUSIC OUTPUT [MUSIC_VOLUME] [PROGRAM_VOLUME]'
+    mix_audio "$1" "$2" "$3" "${4:-0.20}" "${5:-1.0}"
+    notify normal 'Audio mix complete' "$3"
+    ;;
+  process)
+    (($# >= 4 && $# <= 7)) || die 'process requires INPUT OUTPUT START_TRIM END_TRIM [MUSIC|-] [TARGET_LUFS] [MUSIC_VOLUME]'
+    process_video "$1" "$2" "$3" "$4" "${5:--}" "${6:--16}" "${7:-0.20}"
+    notify normal 'Video processing complete' "$2"
+    ;;
+  help)
+    usage
+    ;;
+  *)
+    usage >&2
+    die "Unknown command: ${command_name}"
+    ;;
+esac

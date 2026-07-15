@@ -1,0 +1,8 @@
+"query:Unread:unread = \"yes\""
+"query:Linux:tags # \"linux\""
+"query:Development:tags # \"dev\""
+"query:Dotfiles:tags # \"dotfiles\""
+
+https://archlinux.org/feeds/news/ "~Arch Linux News" "linux" "!"
+https://github.blog/feed/ "~GitHub Blog" "dev" "!"
+https://isomoes.github.io/en/feed.xml "~Isomo Blog" "dotfiles" "!"

@@ -24,6 +24,8 @@ require("smart-enter"):setup {
 	open_multi = true,
 }
 
+require("recycle-bin"):setup()
+
 require("whoosh"):setup {
 	bookmarks = {
 		{ tag = "Home", path = "~", key = "h" },

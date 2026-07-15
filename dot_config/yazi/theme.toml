@@ -143,28 +143,6 @@ hovered = { fg = "#d4e3ff", underline = true }
 # : ]]]
 
 
-# : Git [[[
-
-[git]
-modified = { fg = "#b4c7e9" }
-added = { fg = "#80d4d7" }
-untracked = { fg = "#ffb4ab" }
-ignored = { fg = "#598a8a" }
-deleted = { fg = "#ffb4ab", bold = true }
-updated = { fg = "#d4e3ff" }
-clean = { fg = "#598a8a" }
-
-modified_sign = "M"
-added_sign = "A"
-untracked_sign = "?"
-ignored_sign = "I"
-deleted_sign = "D"
-updated_sign = "U"
-clean_sign = " "
-
-# : ]]]
-
-
 # : Help [[[
 
 [help]

@@ -1,0 +1,13 @@
+com.github.johnfactotum.Foliate
+com.github.qarmin.czkawka
+com.github.wwmm.easyeffects
+com.logseq.Logseq
+com.obsproject.Studio
+com.usebottles.bottles
+io.freetubeapp.FreeTube
+io.github.alainm23.planify
+io.github.seadve.Kooha
+it.mijorus.gearlever
+net.lrclib.lrcget
+org.kde.kdenlive
+org.libretro.RetroArch

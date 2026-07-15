@@ -1,0 +1,16 @@
+[Desktop Entry]
+Name=Neovim (Kitty)
+GenericName=Text Editor
+Comment=Open files in Neovim inside Kitty
+TryExec={{ .chezmoi.homeDir }}/.local/bin/kitty-nvim
+Exec={{ .chezmoi.homeDir }}/.local/bin/kitty-nvim %F
+Icon=nvim
+Terminal=false
+Type=Application
+Categories=Utility;TextEditor;
+MimeType=text/plain;text/x-c;text/x-c++;text/x-csrc;text/x-c++src;text/x-chdr;text/x-c++hdr;text/x-python;text/x-shellscript;text/x-tex;
+Actions=ReviewLastCommit;
+
+[Desktop Action ReviewLastCommit]
+Name=Review Last Commit
+Exec={{ .chezmoi.homeDir }}/.local/bin/kitty-nvim "--diff=HEAD~1" %F

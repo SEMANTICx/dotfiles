@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+force=0
+cpu_only=0
+temporary_directory=
+
+usage() {
+  cat <<'EOF'
+Usage: add-subtitles [--force] [--cpu] INPUT_VIDEO SUBTITLE_FILE [OUTPUT_VIDEO]
+
+Burn subtitles into a video. The default output is INPUT-subtitled.mp4.
+NVENC is tried first when available, with automatic libx264 fallback.
+
+Options:
+  --force  overwrite an existing output file
+  --cpu    skip NVENC and use libx264
+  -h       show this help
+EOF
+}
+
+notify() {
+  local urgency=$1
+  local title=$2
+  local body=$3
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send --app-name=add-subtitles --urgency="${urgency}" "${title}" "${body}" >/dev/null 2>&1 || true
+  fi
+}
+
+cleanup() {
+  if [[ -n ${temporary_directory} ]]; then
+    rm -rf -- "${temporary_directory}"
+  fi
+}
+trap cleanup EXIT HUP INT TERM
+
+while (($# > 0)); do
+  case $1 in
+    --force)
+      force=1
+      shift
+      ;;
+    --cpu)
+      cpu_only=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      printf 'Unknown option: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if (($# < 2 || $# > 3)); then
+  usage >&2
+  exit 2
+fi
+
+input_video=$1
+subtitle_file=$2
+output_video=${3-}
+
+for command_name in ffmpeg realpath; do
+  if ! command -v "${command_name}" >/dev/null 2>&1; then
+    printf 'Required command not found: %s\n' "${command_name}" >&2
+    exit 1
+  fi
+done
+
+if [[ ! -f ${input_video} ]]; then
+  printf 'Input video not found: %s\n' "${input_video}" >&2
+  exit 1
+fi
+if [[ ! -f ${subtitle_file} ]]; then
+  printf 'Subtitle file not found: %s\n' "${subtitle_file}" >&2
+  exit 1
+fi
+
+if [[ -z ${output_video} ]]; then
+  if [[ ${input_video} == *.* ]]; then
+    output_video=${input_video%.*}-subtitled.mp4
+  else
+    output_video=${input_video}-subtitled.mp4
+  fi
+fi
+
+if [[ $(realpath -m -- "${input_video}") == "$(realpath -m -- "${output_video}")" ]]; then
+  printf 'Input and output paths must be different.\n' >&2
+  exit 1
+fi
+if [[ ! -d $(dirname -- "${output_video}") ]]; then
+  printf 'Output directory does not exist: %s\n' "$(dirname -- "${output_video}")" >&2
+  exit 1
+fi
+if [[ -e ${output_video} && ${force} -eq 0 ]]; then
+  printf 'Output already exists (use --force): %s\n' "${output_video}" >&2
+  exit 1
+fi
+
+temporary_directory=$(mktemp -d "${TMPDIR:-/tmp}/add-subtitles.XXXXXXXX")
+subtitle_extension=${subtitle_file##*.}
+case ${subtitle_extension,,} in
+  ass|ssa|srt|vtt) ;;
+  *) subtitle_extension=srt ;;
+esac
+temporary_subtitle=${temporary_directory}/subtitle.${subtitle_extension}
+ln -s -- "$(realpath -- "${subtitle_file}")" "${temporary_subtitle}"
+
+subtitle_filter="subtitles=filename='${temporary_subtitle}':force_style='FontName=Noto Sans CJK SC,FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Outline=2,Shadow=1,Bold=1,MarginV=30,Alignment=2'"
+
+if ((force)); then
+  overwrite=(-y)
+else
+  overwrite=(-n)
+fi
+
+mux_options=()
+case ${output_video,,} in
+  *.mp4|*.m4v|*.mov)
+    mux_options=(-movflags +faststart)
+    ;;
+esac
+
+common=(
+  ffmpeg -hide_banner "${overwrite[@]}"
+  -i "${input_video}"
+  -vf "${subtitle_filter}"
+  -map 0:v:0 -map '0:a?'
+  -map_metadata 0
+  -c:a aac -b:a 192k
+  -pix_fmt yuv420p
+  "${mux_options[@]}"
+)
+
+encoded=0
+if ((cpu_only == 0)) && grep -q '[[:space:]]h264_nvenc[[:space:]]' <<<"$(ffmpeg -hide_banner -encoders 2>/dev/null)"; then
+  printf 'Encoding with NVIDIA NVENC...\n'
+  if "${common[@]}" -c:v h264_nvenc -preset p5 -tune hq -cq 23 -b:v 0 "${output_video}"; then
+    encoded=1
+  else
+    printf 'NVENC failed; retrying with libx264.\n' >&2
+    rm -f -- "${output_video}"
+  fi
+fi
+
+if ((encoded == 0)); then
+  printf 'Encoding with libx264...\n'
+  if ! "${common[@]}" -c:v libx264 -preset medium -crf 23 "${output_video}"; then
+    rm -f -- "${output_video}"
+    notify critical "Subtitle encoding failed" "${input_video}"
+    exit 1
+  fi
+fi
+
+printf 'Subtitled video written to: %s\n' "${output_video}"
+notify normal "Subtitle encoding complete" "${output_video}"

@@ -1,0 +1,7 @@
+// Keep password-manager contents out of screenshots and screencasts captured
+// through Niri. 1Password's native Arch package advertises StartupWMClass
+// "1Password"; the case-insensitive anchor also covers Electron variations.
+window-rule {
+    match app-id=r#"(?i)^1password$"#
+    block-out-from "screen-capture"
+}

@@ -49,6 +49,11 @@ export LF_ICONS
 # Initialize zoxide
 eval "$(zoxide init zsh)"
 
+# Worktrunk shell integration lets `wt switch` change the current directory.
+if command -v wt >/dev/null 2>&1; then
+  eval "$(wt config shell init zsh)"
+fi
+
 # =========================================================
 # Completion
 # =========================================================

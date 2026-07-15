@@ -1,0 +1,12 @@
+{
+  "material-code.primaryColor": "",
+  "editor.lineNumbers": "relative",
+  "editor.wordWrap": "on",
+  "editor.smoothScrolling": true,
+  "workbench.list.smoothScrolling": true,
+  "terminal.integrated.smoothScrolling": true,
+  "vscode-neovim.neovimExecutablePaths.linux": "/usr/bin/nvim",
+  "extensions.experimental.affinity": {
+    "asvetliakov.vscode-neovim": 1
+  }
+}
