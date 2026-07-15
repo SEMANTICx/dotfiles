@@ -1,10 +1,10 @@
 local M = {}
 
 local diagnostic_signs = {
-	Error = " ",
-	Warn = " ",
-	Hint = "",
-	Info = "",
+	Error = "󰅙",
+	Warn = "",
+	Hint = "󰌵",
+	Info = "󰋼",
 }
 
 M.setup = function()

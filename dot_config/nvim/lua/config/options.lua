@@ -28,6 +28,7 @@ vim.opt.ignorecase = true -- Case-insensitive search
 vim.opt.smartcase = true -- Case-sensitive if uppercase in search
 vim.opt.hlsearch = false -- Don't highlight search results
 vim.opt.incsearch = true -- Show matches as you type
+vim.opt.inccommand = "split" -- Preview substitutions in a dedicated split
 
 -- Visual Settings
 vim.opt.termguicolors = true -- Enable 24-bit colors

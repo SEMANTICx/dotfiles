@@ -7,12 +7,17 @@
 
 return {
 	"WhoIsSethDaniel/mason-tool-installer.nvim",
-	dependencies = { "mason-org/mason.nvim" },
-	event = "VeryLazy",
+	cmd = { "MasonToolsInstall", "MasonToolsInstallSync", "MasonToolsUpdate" },
+	dependencies = {
+		{
+			"mason-org/mason.nvim",
+			cmd = "Mason",
+			opts = {},
+		},
+	},
 	opts = {
 		ensure_installed = require("config.tools").mason_tools,
 		auto_update = false,
-		run_on_start = vim.env.CI ~= "true",
-		start_delay = 3000,
+		run_on_start = false,
 	},
 }

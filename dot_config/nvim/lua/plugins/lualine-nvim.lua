@@ -5,9 +5,16 @@
 -- ABOUT : A blazing fast and easy to configure Neovim statusline written in Lua.
 -- ================================================================================================
 
+local use_lualine = vim.g.statusline_backend == "lualine"
+
 return {
 	"nvim-lualine/lualine.nvim",
+	lazy = not use_lualine,
 	config = function()
+		if not use_lualine then
+			return
+		end
+
 		require("lualine").setup({
 			options = {
 				theme = "auto",

@@ -7,6 +7,48 @@
 
 local ghostty_dashboard = require("ui.ghostty_dashboard")
 
+local function setup_lsp_rename(snacks)
+	local rename = snacks.rename
+
+	-- Snacks 2.x still uses the deprecated dot-call LSP compatibility wrappers
+	-- and a short timeout. Keep its prompt/file handling while making the LSP
+	-- hand-off reliable on a cold TypeScript project and clean on Neovim 0.13.
+	rename.on_rename_file = function(from, to, rename_file)
+		local changes = {
+			files = {
+				{
+					oldUri = vim.uri_from_fname(from),
+					newUri = vim.uri_from_fname(to),
+				},
+			},
+		}
+		local applied = {}
+
+		for _, client in ipairs(vim.lsp.get_clients()) do
+			if client:supports_method("workspace/willRenameFiles", 0) then
+				local response = client:request_sync("workspace/willRenameFiles", changes, 5000, 0)
+				if response and response.result then
+					local key = vim.inspect(response.result)
+					if not applied[key] then
+						applied[key] = true
+						vim.lsp.util.apply_workspace_edit(response.result, client.offset_encoding)
+					end
+				end
+			end
+		end
+
+		if rename_file then
+			rename_file()
+		end
+
+		for _, client in ipairs(vim.lsp.get_clients()) do
+			if client:supports_method("workspace/didRenameFiles", 0) then
+				client:notify("workspace/didRenameFiles", changes)
+			end
+		end
+	end
+end
+
 return {
 	"folke/snacks.nvim",
 	priority = 1000,
@@ -27,6 +69,20 @@ return {
 				require("snacks.bufdelete")()
 			end,
 			desc = "Delete buffer",
+		},
+		{
+			"<leader>gr",
+			function()
+				require("snacks").rename.rename_file()
+			end,
+			desc = "Rename file with LSP updates",
+		},
+		{
+			"<leader>gg",
+			function()
+				require("snacks").lazygit()
+			end,
+			desc = "Open Lazygit",
 		},
 	},
 	opts = {
@@ -66,6 +122,12 @@ return {
 						action = function()
 							require("fzf-lua").oldfiles()
 						end,
+					},
+					{
+						icon = "󰑓 ",
+						key = "s",
+						desc = "Restore Session",
+						action = ":SessionRestore",
 					},
 					{
 						icon = " ",
@@ -134,7 +196,9 @@ return {
 		},
 	},
 	config = function(_, opts)
-		require("snacks").setup(opts)
+		local snacks = require("snacks")
+		snacks.setup(opts)
+		setup_lsp_rename(snacks)
 		pcall(function()
 			require("snacks.input").enable()
 		end)

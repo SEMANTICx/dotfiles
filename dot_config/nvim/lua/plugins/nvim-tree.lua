@@ -7,6 +7,25 @@
 
 return {
 	"nvim-tree/nvim-tree.lua",
+	init = function()
+		local group = vim.api.nvim_create_augroup("NvimTreeSeamlessEdge", { clear = true })
+		vim.api.nvim_create_autocmd("FileType", {
+			group = group,
+			pattern = "NvimTree",
+			callback = function(args)
+				vim.schedule(function()
+					local win = vim.fn.bufwinid(args.buf)
+					if win ~= -1 and vim.api.nvim_win_is_valid(win) then
+						vim.api.nvim_set_option_value(
+							"fillchars",
+							"eob: ,vert: ,vertleft: ,vertright: ,verthoriz: ",
+							{ scope = "local", win = win }
+						)
+					end
+				end)
+			end,
+		})
+	end,
 	cmd = {
 		"NvimTreeClose",
 		"NvimTreeFindFile",

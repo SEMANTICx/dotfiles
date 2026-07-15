@@ -31,9 +31,9 @@ M.on_attach = function(event)
 	keymap("n", "<leader>D", function()
 		vim.diagnostic.open_float({ scope = "line" })
 	end, opts) -- Line diagnostics (float)
-	keymap("n", "<leader>d", function()
+	keymap("n", "<leader>dd", function()
 		vim.diagnostic.open_float({ scope = "cursor" })
-	end, opts) -- Cursor diagnostics
+	end, vim.tbl_extend("force", opts, { desc = "Cursor diagnostics" }))
 	keymap("n", "<leader>pd", function()
 		vim.diagnostic.jump({ count = -1 })
 	end, opts) -- previous diagnostic
@@ -52,23 +52,7 @@ M.on_attach = function(event)
 	-- Order Imports (if supported by the client LSP)
 	if client:supports_method("textDocument/codeAction", bufnr) then
 		keymap("n", "<leader>oi", function()
-			vim.lsp.buf.code_action({
-				context = {
-					only = { "source.organizeImports" },
-					diagnostics = {},
-				},
-				apply = true,
-				bufnr = bufnr,
-			})
-			-- format after changing import order
-			vim.defer_fn(function()
-				local conform_ok, conform = pcall(require, "conform")
-				if conform_ok then
-					conform.format({ bufnr = bufnr, timeout_ms = 2000, lsp_format = "fallback" })
-				else
-					vim.lsp.buf.format({ bufnr = bufnr, timeout_ms = 2000 })
-				end
-			end, 50) -- slight delay to allow for the import order to go first
+			require("utils.organize_imports").run(bufnr)
 		end, opts)
 	end
 

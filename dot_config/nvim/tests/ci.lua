@@ -38,22 +38,70 @@ end
 local lazy = require("lazy")
 local stats = lazy.stats()
 check(stats.count >= 45, "Lazy plugin spec", string.format("expected at least 45 plugins, got %d", stats.count))
+check(vim.g.statusline_backend == "nvchad", "Default statusline backend is NvChad")
 
 local lazy_config = require("lazy.core.config")
+check(lazy_config.plugins["lualine.nvim"]._.loaded == nil, "Lualine stays dormant on the NvChad backend")
 check(lazy_config.plugins.rustaceanvim._.loaded == nil, "Rustacean stays lazy before Rust buffers")
-check(
-	type(vim.g.rustaceanvim.dap.adapter) == "function",
-	"Rust DAP adapter resolves lazily without loading Mason"
-)
+check(type(vim.g.rustaceanvim.dap.adapter) == "function", "Rust DAP adapter resolves lazily without loading Mason")
 check(lazy_config.plugins["mason.nvim"]._.loaded == nil, "Mason stays lazy before language buffers")
+local mason_bin = vim.fs.joinpath(vim.fn.stdpath("data"), "mason", "bin")
+local path_separator = package.config:sub(1, 1) == "\\" and ";" or ":"
+local path_entries = vim.split(vim.env.PATH or "", path_separator, { plain = true })
+check(vim.tbl_contains(path_entries, mason_bin), "Mason tools stay on PATH while Mason is lazy")
+check(lazy_config.plugins["fzf-lua"]._.loaded == nil, "FzfLua stays lazy before project selection")
 check(lazy_config.plugins["mini.bufremove"] == nil, "Unused mini.bufremove removed")
 check(lazy_config.plugins["nvim-transparent"] == nil, "Redundant transparency plugin removed")
+for _, plugin in ipairs({ "csvview.nvim", "mini.splitjoin", "nvim-treesitter-textobjects" }) do
+	check(lazy_config.plugins[plugin] ~= nil, "Workflow plugin declared: " .. plugin)
+end
+
+local nvchad_icons_ok, nvchad_icons_err = pcall(function()
+	local devicons = require("nvim-web-devicons")
+	local lspkind = require("nvchad.icons.lspkind")
+	assert(devicons.get_icon("app.js", "js") == "󰌞", "JavaScript devicon override is missing")
+	assert(devicons.get_icon("app.ts", "ts") == "󰛦", "TypeScript devicon override is missing")
+	assert(devicons.get_icon("package.lock", "lock") == "󰌾", "lock devicon override is missing")
+	assert(lspkind.Function == "󰆧" and lspkind.Variable == "󰀫", "NvChad LSP kind icons are unavailable")
+
+	local blink_opts = lazy_config.plugins["blink.cmp"].opts
+	local kind_icon = blink_opts.completion.menu.draw.components.kind_icon
+	assert(kind_icon.text({ kind = "Function" }) == lspkind.Function, "Blink is not using NvChad LSP kind icons")
+end)
+check(nvchad_icons_ok, "NvChad devicons and LSP kind icons", nvchad_icons_err)
 
 local undodir = vim.fs.normalize(vim.o.undodir)
 local state_dir = vim.fs.normalize(vim.fn.stdpath("state"))
 check(vim.startswith(undodir, state_dir), "Undo directory follows stdpath('state')", undodir)
+check(vim.o.inccommand == "split", "Substitution preview uses inccommand split", vim.o.inccommand)
 
-for _, command in ipairs({ "ConfigHealth", "ConfigSyncTools", "DashboardAnimationToggle", "CodeCompanionCheck" }) do
+local function leader_prefix_conflicts(maps)
+	local conflicts = {}
+	for _, exact in ipairs(maps) do
+		if exact.lhs:sub(1, 1) == " " then
+			for _, longer in ipairs(maps) do
+				if #exact.lhs < #longer.lhs and longer.lhs:sub(1, #exact.lhs) == exact.lhs then
+					conflicts[#conflicts + 1] = exact.lhs .. " -> " .. longer.lhs
+				end
+			end
+		end
+	end
+	return conflicts
+end
+
+local global_prefixes = leader_prefix_conflicts(vim.api.nvim_get_keymap("n"))
+check(#global_prefixes == 0, "Global leader mappings avoid exact-prefix delays", table.concat(global_prefixes, ", "))
+local blackhole_map = vim.fn.maparg("<leader>X", "n", false, true)
+check(blackhole_map.rhs == '"_d', "Black-hole delete moved to <leader>X")
+check(vim.fn.maparg("<leader>c", "n") == "", "Redundant clear-search mapping removed")
+
+for _, command in ipairs({
+	"ConfigHealth",
+	"ConfigSyncTools",
+	"DashboardAnimationToggle",
+	"CodeCompanionCheck",
+	"SessionRestore",
+}) do
 	check(vim.fn.exists(":" .. command) == 2, "Command available: " .. command)
 end
 
@@ -95,15 +143,144 @@ check(treesitter_ok, "TSX parser loads and parses", treesitter_err)
 
 local lsp_ok, lsp_err = pcall(function()
 	lazy.load({ plugins = { "nvim-lspconfig" } })
+	assert(lazy_config.plugins["mason.nvim"]._.loaded == nil, "nvim-lspconfig still loads Mason eagerly")
+	local diagnostic_text = vim.diagnostic.config().signs.text
+	assert(diagnostic_text[vim.diagnostic.severity.ERROR] == "󰅙", "diagnostic error icon is not from NvChad")
+	assert(diagnostic_text[vim.diagnostic.severity.HINT] == "󰌵", "diagnostic hint icon is not from NvChad")
+
 	for _, server in ipairs(tools.lsp_servers) do
 		assert(vim.lsp.config[server], "missing LSP config: " .. server)
 	end
+
+	local lsp_utils = require("utils.lsp")
+	local organize_imports = require("utils.organize_imports")
+	local fixture_buf = vim.api.nvim_create_buf(false, true)
+	local original_buf = vim.api.nvim_get_current_buf()
+	local original_get_clients = vim.lsp.get_clients
+	local original_get_client_by_id = vim.lsp.get_client_by_id
+	local original_apply_workspace_edit = vim.lsp.util.apply_workspace_edit
+	local original_conform = package.loaded.conform
+	local events = {}
+	local execute_callback
+
+	local fixture_client = {
+		name = "fixture_lsp",
+		offset_encoding = "utf-16",
+		commands = {},
+		server_capabilities = {
+			executeCommandProvider = { commands = { "fixture.organizeImports" } },
+		},
+		supports_method = function(_, method)
+			return method == "textDocument/codeAction"
+		end,
+		request = function(_, method, params, callback)
+			assert(method == "textDocument/codeAction", "unexpected fixture request: " .. method)
+			assert(params.context.only[1] == "source.organizeImports", "organize imports request lost its filter")
+			events[#events + 1] = "request"
+			callback(nil, {
+				{
+					title = "Organize Imports",
+					edit = { changes = {} },
+					command = { title = "Organize Imports", command = "fixture.organizeImports" },
+				},
+			})
+			return true
+		end,
+		exec_cmd = function(_, command, _, callback)
+			assert(command.command == "fixture.organizeImports", "wrong organize imports command")
+			events[#events + 1] = "command"
+			execute_callback = callback
+		end,
+	}
+
+	local fixture_ok, fixture_err = xpcall(function()
+		vim.api.nvim_set_current_buf(fixture_buf)
+		vim.lsp.get_clients = function()
+			return { fixture_client }
+		end
+		vim.lsp.util.apply_workspace_edit = function()
+			events[#events + 1] = "edit"
+		end
+		package.loaded.conform = {
+			format = function(opts)
+				assert(opts.bufnr == fixture_buf, "organize imports formatted the wrong buffer")
+				events[#events + 1] = "format"
+			end,
+		}
+
+		organize_imports.run(fixture_buf)
+		assert(table.concat(events, ",") == "request,edit,command", "format did not wait for the LSP command")
+		assert(type(execute_callback) == "function", "organize imports command callback is missing")
+		execute_callback(nil)
+		assert(table.concat(events, ",") == "request,edit,command,format", "organize imports callback order is wrong")
+
+		vim.lsp.get_client_by_id = function()
+			return {
+				name = "fixture_lsp",
+				supports_method = function()
+					return false
+				end,
+			}
+		end
+		lsp_utils.on_attach({ buf = fixture_buf, data = { client_id = 1 } })
+		local buffer_maps =
+			vim.list_extend(vim.deepcopy(vim.api.nvim_get_keymap("n")), vim.api.nvim_buf_get_keymap(fixture_buf, "n"))
+		local prefixes = leader_prefix_conflicts(buffer_maps)
+		assert(#prefixes == 0, "LSP mappings contain exact-prefix delays: " .. table.concat(prefixes, ", "))
+		local diagnostic_map = vim.iter(vim.api.nvim_buf_get_keymap(fixture_buf, "n")):find(function(map)
+			return map.lhs == " dd"
+		end)
+		assert(
+			diagnostic_map and diagnostic_map.desc == "Cursor diagnostics",
+			"cursor diagnostics did not move to <leader>dd"
+		)
+	end, debug.traceback)
+
+	vim.lsp.get_clients = original_get_clients
+	vim.lsp.get_client_by_id = original_get_client_by_id
+	vim.lsp.util.apply_workspace_edit = original_apply_workspace_edit
+	package.loaded.conform = original_conform
+	if vim.api.nvim_buf_is_valid(original_buf) then
+		vim.api.nvim_set_current_buf(original_buf)
+	end
+	if vim.api.nvim_buf_is_valid(fixture_buf) then
+		vim.api.nvim_buf_delete(fixture_buf, { force = true })
+	end
+	assert(fixture_ok, fixture_err)
 
 	local tailwind = assert(vim.lsp.config.tailwindcss)
 	for _, filetype in ipairs({ "html", "css", "scss", "typescriptreact" }) do
 		assert(contains(tailwind.filetypes, filetype), "tailwindcss missing filetype: " .. filetype)
 	end
 	assert(type(tailwind.root_dir) == "function", "tailwindcss root_dir must support v4 discovery")
+
+	local tinymist = assert(vim.lsp.config.tinymist)
+	assert(type(tinymist.on_attach) == "function", "tinymist on_attach is unavailable")
+	local typst_buf = vim.api.nvim_create_buf(false, true)
+	local typst_path = vim.fs.joinpath(vim.fn.tempname(), "main.typ")
+	vim.api.nvim_buf_set_name(typst_buf, typst_path)
+	local exports = {}
+	tinymist.on_attach({
+		request = function() end,
+		exec_cmd = function(_, command, context)
+			exports[#exports + 1] = { command = command, context = context }
+		end,
+	}, typst_buf)
+	local typst_commands = vim.api.nvim_buf_get_commands(typst_buf, {})
+	for _, format in ipairs({ "PDF", "SVG", "PNG", "HTML", "Markdown" }) do
+		local name = "TypstExport" .. format
+		assert(typst_commands[name], "missing buffer command: " .. name)
+		vim.api.nvim_buf_call(typst_buf, function()
+			vim.cmd(name)
+		end)
+	end
+	assert(typst_commands.TypstOpenPDF, "missing buffer command: TypstOpenPDF")
+	assert(#exports == 5, string.format("expected five Typst exports, got %d", #exports))
+	for _, call in ipairs(exports) do
+		assert(call.command.arguments[1] == typst_path, "Typst export used the wrong source path")
+		assert(call.context.bufnr == typst_buf, "Typst export used the wrong buffer")
+	end
+	vim.api.nvim_buf_delete(typst_buf, { force = true })
 
 	local temp = vim.fn.tempname()
 	vim.fn.mkdir(vim.fs.joinpath(temp, ".git"), "p")
@@ -127,6 +304,159 @@ local lsp_ok, lsp_err = pcall(function()
 	vim.fn.delete(temp, "rf")
 end)
 check(lsp_ok, "LSP configuration and Tailwind coverage", lsp_err)
+
+local session_ok, session_err = pcall(function()
+	local startup_restores = vim.api.nvim_get_autocmds({
+		group = "ProjectDirSessions",
+		event = "VimEnter",
+	})
+	assert(#startup_restores == 0, "plain Neovim startup must leave the dashboard visible")
+	local exit_saves = vim.api.nvim_get_autocmds({
+		group = "ProjectDirSessions",
+		event = "VimLeavePre",
+	})
+	assert(#exit_saves == 1, "project session exit save is unavailable")
+end)
+check(session_ok, "Project sessions do not replace the startup dashboard", session_err)
+
+local statusline_ok, statusline_err = pcall(function()
+	local renderer = require("nvchad.stl.default")
+	local source = debug.getinfo(renderer, "S").source
+	assert(source:find("/lazy/ui/", 1, true), "statusline renderer is not loaded from NvChad/ui: " .. source)
+	vim.cmd.colorscheme("duskfox")
+	vim.wait(100)
+
+	assert(vim.api.nvim_get_hl(0, { name = "Normal" }).bg == nil, "Normal background is no longer transparent")
+	assert(
+		vim.api.nvim_get_hl(0, { name = "NormalFloat" }).bg == nil,
+		"NormalFloat background is no longer transparent"
+	)
+	assert(
+		vim.api.nvim_get_hl(0, { name = "NvimTreeNormal" }).bg == nil,
+		"NvimTree background is no longer transparent"
+	)
+	assert(vim.api.nvim_get_hl(0, { name = "NvimTreeNormalNC" }).bg == nil, "inactive NvimTree background is opaque")
+	assert(vim.api.nvim_get_hl(0, { name = "NvimTreeEndOfBuffer" }).bg == nil, "NvimTree end area is opaque")
+	assert(
+		vim.api.nvim_get_hl(0, { name = "NvimTreeCursorLine" }).bg == tonumber("282C34", 16),
+		"wrong soft NvimTree cursor background"
+	)
+	assert(vim.api.nvim_get_hl(0, { name = "StatusLine" }).bg == tonumber("22262E", 16), "wrong statusline background")
+	assert(vim.api.nvim_get_hl(0, { name = "St_ChadFile" }).bg == tonumber("2D3139", 16), "wrong file background")
+	assert(vim.api.nvim_get_hl(0, { name = "St_ChadProjectIcon" }).bg == tonumber("E06C75", 16), "wrong project accent")
+	assert(
+		vim.api.nvim_get_hl(0, { name = "St_ChadNormalModeLeft" }).bg == tonumber("81A1C1", 16),
+		"wrong screenshot-derived normal color"
+	)
+	assert(
+		vim.api.nvim_get_hl(0, { name = "St_ChadInsertModeLeft" }).bg == tonumber("98C379", 16),
+		"wrong insert color"
+	)
+	assert(
+		vim.api.nvim_get_hl(0, { name = "St_ChadPositionIcon" }).bg == tonumber("98C379", 16),
+		"wrong position color"
+	)
+	assert(
+		vim.api.nvim_get_hl(0, { name = "St_ChadProjectOuter" }).fg == tonumber("343A44", 16),
+		"wrong project outer curve color"
+	)
+	assert(
+		vim.api.nvim_get_hl(0, { name = "St_ChadProjectText" }).bg == tonumber("2D3139", 16),
+		"wrong project background color"
+	)
+	assert(
+		vim.api.nvim_get_hl(0, { name = "St_ChadPositionOuterJoined" }).fg == tonumber("3B414B", 16),
+		"wrong position outer curve color"
+	)
+	assert(
+		vim.api.nvim_get_hl(0, { name = "St_ChadPositionText" }).bg == tonumber("2D3139", 16),
+		"wrong position text background"
+	)
+
+	local modules = require("nvconfig").ui.statusline.modules
+	local bufnr = vim.api.nvim_get_current_buf()
+	local old_columns = vim.o.columns
+	local old_winid = vim.g.statusline_winid
+	local old_head = vim.b[bufnr].gitsigns_head
+	local old_status = vim.b[bufnr].gitsigns_status_dict
+	local diagnostic_ns = vim.api.nvim_create_namespace("StatuslineRegression")
+	local mocked_diagnostics = {}
+
+	local function add_diagnostics(severity, count)
+		for _ = 1, count do
+			mocked_diagnostics[#mocked_diagnostics + 1] = {
+				lnum = 0,
+				col = 0,
+				message = "statusline fixture",
+				severity = severity,
+			}
+		end
+	end
+
+	add_diagnostics(vim.diagnostic.severity.ERROR, 24)
+	add_diagnostics(vim.diagnostic.severity.WARN, 1)
+	add_diagnostics(vim.diagnostic.severity.HINT, 2)
+
+	vim.g.statusline_winid = vim.api.nvim_get_current_win()
+	vim.b[bufnr].gitsigns_head = "main"
+	vim.b[bufnr].gitsigns_status_dict = { head = "main", added = 3, changed = 0, removed = 1 }
+	vim.diagnostic.set(diagnostic_ns, bufnr, mocked_diagnostics)
+
+	local fixture_ok, fixture_err = xpcall(function()
+		vim.g.statusline_winid = vim.api.nvim_get_current_win()
+		vim.o.columns = 169
+		local wide = renderer()
+		for _, text in ipairs({ "NORMAL", " 3", " 1", " 24", " 1", "󰌵 2", " main", "", "Top" }) do
+			assert(wide:find(text, 1, true), "wide statusline is missing " .. text)
+		end
+		assert(modules.file():find("St_ChadFileSep#", 1, true), "file block does not end with a rounded separator")
+		assert(not wide:find("", 1, true), "wide statusline still contains the old logo")
+		assert(not wide:find("", 1, true), "mode still contains an icon")
+		assert(
+			modules.project():find("St_ChadProjectOuter#%#St_ChadProjectSep#", 1, true),
+			"project block is missing the dark and colored left curves"
+		)
+		assert(
+			modules.project():find("St_ChadProjectIcon# ", 1, true),
+			"project icon block does not match the compact NvChad ratio"
+		)
+		assert(
+			modules.cursor():find("St_ChadPositionOuterJoined#%#St_ChadPositionSep#", 1, true),
+			"position block is missing the joined dark and colored left curves"
+		)
+		assert(
+			modules.cursor():find("St_ChadPositionIcon# ", 1, true),
+			"position icon block does not match the compact NvChad ratio"
+		)
+		assert(not wide:find("St_ChadRightCap", 1, true), "right modules still contain the misplaced dark cap")
+		local branch_at = assert(wide:find(" main", 1, true))
+		local project_at = assert(wide:find("", 1, true))
+		local position_at = assert(wide:find("Top", 1, true))
+		assert(branch_at < project_at and project_at < position_at, "project is not in the former right-side mode slot")
+
+		vim.o.columns = 84
+		local medium = renderer()
+		assert(not medium:find(" 3", 1, true), "medium statusline did not hide Git diff")
+		assert(medium:find(" main", 1, true), "medium statusline hid the branch too early")
+
+		vim.o.columns = 60
+		local narrow = renderer()
+		assert(not narrow:find("", 1, true), "narrow statusline did not hide the project")
+		assert(not narrow:find(" main", 1, true), "narrow statusline did not hide the branch")
+		assert(
+			narrow:find("St_ChadPositionOuterSolo#", 1, true),
+			"narrow position block did not switch to the standalone outer curve"
+		)
+	end, debug.traceback)
+
+	vim.diagnostic.reset(diagnostic_ns, bufnr)
+	vim.b[bufnr].gitsigns_head = old_head
+	vim.b[bufnr].gitsigns_status_dict = old_status
+	vim.g.statusline_winid = old_winid
+	vim.o.columns = old_columns
+	assert(fixture_ok, fixture_err)
+end)
+check(statusline_ok, "NvChad statusline palette, modules, and responsive layout", statusline_err)
 
 local dashboard_ok, dashboard_err = pcall(function()
 	local dashboard = require("ui.ghostty_dashboard")

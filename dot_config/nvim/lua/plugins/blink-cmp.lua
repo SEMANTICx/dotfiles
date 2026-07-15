@@ -41,11 +41,49 @@ return {
 			documentation = {
 				auto_show = true,
 				auto_show_delay_ms = 300,
+				window = {
+					border = "rounded",
+					max_width = 70,
+					max_height = 18,
+					desired_min_width = 45,
+					desired_min_height = 8,
+				},
 			},
 			menu = {
+				min_width = 28,
+				max_height = 12,
+				border = "rounded",
+				scrollbar = false,
 				auto_show = function()
 					return vim.bo.filetype ~= "markdown"
 				end,
+				draw = {
+					padding = { 1, 1 },
+					gap = 1,
+					columns = {
+						{ "kind_icon" },
+						{ "label", "label_description", gap = 1 },
+						{ "kind" },
+					},
+					components = {
+						kind_icon = {
+							text = function(ctx)
+								local icons = require("nvchad.icons.lspkind")
+								return icons[ctx.kind] or "󰈚"
+							end,
+						},
+						kind = {
+							ellipsis = false,
+							width = { max = 14 },
+							text = function(ctx)
+								return ctx.kind
+							end,
+							highlight = function(ctx)
+								return ctx.kind_hl
+							end,
+						},
+					},
+				},
 			},
 		},
 		sources = {
@@ -60,6 +98,11 @@ return {
 		},
 		signature = {
 			enabled = true,
+			window = {
+				border = "rounded",
+				max_width = 80,
+				max_height = 10,
+			},
 		},
 		fuzzy = {
 			implementation = "prefer_rust",

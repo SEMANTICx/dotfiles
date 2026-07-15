@@ -1,7 +1,7 @@
 local failures = {}
 local checks = 0
 
-vim.lsp.set_log_level("debug")
+vim.lsp.log.set_level("debug")
 
 local function fail(name, detail)
 	failures[#failures + 1] = string.format("%s: %s", name, detail)
@@ -112,12 +112,7 @@ for _, case in ipairs(cases) do
 		end
 		config.root_dir = root
 		config.name = case.name
-		if case.name == "ts_ls" then
-			local client_id = assert(vim.lsp.start_client(config), "vim.lsp.start_client did not return a client id")
-			assert(vim.lsp.buf_attach_client(bufnr, client_id), "vim.lsp.buf_attach_client failed")
-		else
-			assert(vim.lsp.start(config, { bufnr = bufnr }), "vim.lsp.start did not return a client id")
-		end
+		assert(vim.lsp.start(config, { bufnr = bufnr }), "vim.lsp.start did not return a client id")
 
 		local attached = vim.wait(20000, function()
 			return #vim.lsp.get_clients({ bufnr = bufnr, name = case.name }) > 0
@@ -138,6 +133,10 @@ for _, case in ipairs(cases) do
 			vim.fs.normalize(client.config.root_dir) == vim.fs.normalize(root),
 			string.format("unexpected root: %s", client.config.root_dir or "nil")
 		)
+
+		local statusline_lsp = require("nvconfig").ui.statusline.modules.lsp()
+		assert(statusline_lsp:find("LSP", 1, true), "statusline did not detect the attached LSP")
+		assert(not statusline_lsp:find(case.name, 1, true), "statusline exposed the server name")
 
 		local params = { textDocument = vim.lsp.util.make_text_document_params(bufnr) }
 		local responses, request_err = vim.lsp.buf_request_sync(bufnr, "textDocument/documentSymbol", params, 20000)

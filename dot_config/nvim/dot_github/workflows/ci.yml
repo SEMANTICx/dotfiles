@@ -95,6 +95,12 @@ jobs:
           nvim --headless
           "+lua dofile(vim.fn.stdpath('config') .. '/tests/ci.lua')"
 
+      - name: Smoke-test statusline backends
+        run: |
+          for backend in nvchad lualine; do
+            NVIM_STATUSLINE="$backend" nvim --headless "+lua dofile(vim.fn.stdpath('config') .. '/tests/statusline.lua')"
+          done
+
       - name: Install LSP smoke-test servers
         if: matrix.neovim == 'stable'
         run: >-

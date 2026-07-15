@@ -69,6 +69,31 @@ local function duplicate_keymaps()
 	return duplicates
 end
 
+local function leader_prefix_conflicts()
+	local conflicts = {}
+	local seen = {}
+
+	for _, mode in ipairs({ "n", "v", "x", "i", "c", "t", "o" }) do
+		local maps = vim.api.nvim_get_keymap(mode)
+		for _, exact in ipairs(maps) do
+			if exact.lhs:sub(1, 1) == " " then
+				for _, longer in ipairs(maps) do
+					if #exact.lhs < #longer.lhs and longer.lhs:sub(1, #exact.lhs) == exact.lhs then
+						local conflict = string.format("%s:%s -> %s", mode, exact.lhs, longer.lhs)
+						if not seen[conflict] then
+							seen[conflict] = true
+							conflicts[#conflicts + 1] = conflict
+						end
+					end
+				end
+			end
+		end
+	end
+
+	table.sort(conflicts)
+	return conflicts
+end
+
 local function dashboard_frame_count()
 	local dir = vim.fn.stdpath("config") .. "/assets/ghostty-animation"
 	return #vim.fn.globpath(dir, "frame_*.txt", false, true)
@@ -322,6 +347,14 @@ function M.collect()
 		#duplicates == 0 and "OK" or "ERR",
 		"global keymap duplicates",
 		#duplicates == 0 and "none" or table.concat(duplicates, ", ")
+	)
+
+	local prefix_conflicts = leader_prefix_conflicts()
+	add(
+		results,
+		#prefix_conflicts == 0 and "OK" or "WARN",
+		"leader keymap prefixes",
+		#prefix_conflicts == 0 and "none" or table.concat(prefix_conflicts, ", ")
 	)
 
 	local core_maps = global_core_keymaps()

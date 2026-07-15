@@ -21,6 +21,10 @@ M.language_order = {
 	"rust",
 	"zig",
 	"solidity",
+	"latex",
+	"typst",
+	"lean",
+	"codeql",
 }
 
 M.languages = {
@@ -143,6 +147,28 @@ M.languages = {
 	},
 	solidity = {
 		treesitter = { "solidity" },
+	},
+	latex = {
+		lsp = "texlab",
+		mason = { "texlab", "latexindent" },
+		treesitter = { "latex" },
+		formatters = { tex = { "latexindent" } },
+	},
+	typst = {
+		lsp = "tinymist",
+		mason = { "tinymist" },
+		treesitter = { "typst" },
+	},
+	lean = {
+		-- Keep optional language support dormant until its external toolchain is
+		-- present; once installed, :TSInstallConfigured picks up the parser.
+		treesitter = (vim.fn.executable("lean") == 1 or vim.fn.executable("lake") == 1) and { "lean" } or {},
+	},
+	codeql = {
+		-- The language server is enabled only after the external CodeQL CLI is
+		-- installed; opening .ql files before that remains error-free.
+		lsp = vim.fn.executable("codeql") == 1 and "codeqlls" or nil,
+		treesitter = vim.fn.executable("codeql") == 1 and { "ql" } or {},
 	},
 }
 
