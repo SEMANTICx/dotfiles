@@ -75,7 +75,7 @@ return {
 			row = 0.50,
 			col = 0.50,
 			border = "rounded",
-			backdrop = 70,
+			backdrop = false,
 			title_pos = "center",
 			preview = {
 				border = "rounded",
