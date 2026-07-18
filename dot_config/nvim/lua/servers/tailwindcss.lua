@@ -74,7 +74,9 @@ return function(capabilities)
 				end
 			end
 
-			for _, package_path in ipairs(vim.fs.find("package.json", { path = start, upward = true, limit = math.huge })) do
+			for _, package_path in
+				ipairs(vim.fs.find("package.json", { path = start, upward = true, limit = math.huge }))
+			do
 				if package_uses_tailwind(package_path) then
 					on_dir(vim.fs.dirname(package_path))
 					return

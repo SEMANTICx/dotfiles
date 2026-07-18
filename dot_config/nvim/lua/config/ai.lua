@@ -25,9 +25,7 @@ local function copilot_auth_available()
 		return true
 	end
 
-	local config_root = vim.env.CODECOMPANION_TOKEN_PATH
-		or vim.env.XDG_CONFIG_HOME
-		or vim.fn.expand("~/.config")
+	local config_root = vim.env.CODECOMPANION_TOKEN_PATH or vim.env.XDG_CONFIG_HOME or vim.fn.expand("~/.config")
 	local auth_dir = vim.fs.joinpath(config_root, "github-copilot")
 
 	for _, filename in ipairs({ "hosts.json", "apps.json" }) do
@@ -37,7 +35,8 @@ local function copilot_auth_available()
 			local decoded_ok, data = pcall(vim.json.decode, ok and table.concat(lines, " ") or "")
 			if decoded_ok and type(data) == "table" then
 				for host, credentials in pairs(data) do
-					if type(host) == "string"
+					if
+						type(host) == "string"
 						and host:find("github.com", 1, true)
 						and type(credentials) == "table"
 						and type(credentials.oauth_token) == "string"

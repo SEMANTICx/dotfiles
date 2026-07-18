@@ -7,7 +7,7 @@
 
 return {
 	"rachartier/tiny-inline-diagnostic.nvim",
-	event = "LspAttach",
+	event = "VeryLazy",
 	priority = 1000,
 	config = function()
 		vim.diagnostic.config({

@@ -7,7 +7,7 @@
 --- @param capabilities table LSP client capabilities from the completion engine
 --- @return nil
 return function(capabilities)
-	vim.lsp.config('yamlls', {
+	vim.lsp.config("yamlls", {
 		capabilities = capabilities,
 		root_markers = {
 			".yamllint",
@@ -22,8 +22,12 @@ return function(capabilities)
 		settings = {
 			yaml = {
 				schemas = {
-					["https://json.schemastore.org/composer.json"] = "composer.json",
-					["https://json.schemastore.org/docker-compose.json"] = "docker-compose*.yml",
+					["https://json.schemastore.org/docker-compose.json"] = {
+						"docker-compose*.yml",
+						"docker-compose*.yaml",
+						"compose.yml",
+						"compose.yaml",
+					},
 				},
 				validate = true,
 				format = {

@@ -50,24 +50,36 @@ local function global_core_keymaps()
 	return found
 end
 
-local function duplicate_keymaps()
-	local seen = {}
-	local duplicates = {}
+local function lazy_keymap_conflicts()
+	local owners = {}
+	local conflicts = {}
+	local seen_conflicts = {}
 
-	for _, mode in ipairs({ "n", "v", "x", "i", "c", "t", "o" }) do
-		for _, map in ipairs(vim.api.nvim_get_keymap(mode)) do
-			local key = mode .. "\t" .. map.lhs
-			if seen[key] then
-				duplicates[#duplicates + 1] = key
-			else
-				seen[key] = true
+	for plugin_name, plugin in pairs(require("lazy.core.config").plugins) do
+		local handlers = plugin._.handlers and plugin._.handlers.keys or {}
+		for _, handler in pairs(handlers) do
+			local modes = type(handler.mode) == "table" and handler.mode or { handler.mode or "n" }
+			for _, mode in ipairs(modes) do
+				local key = mode .. "\t" .. vim.keycode(handler.lhs)
+				local owner = owners[key]
+				if owner and owner ~= plugin_name then
+					local conflict = string.format("%s:%s (%s, %s)", mode, handler.lhs, owner, plugin_name)
+					if not seen_conflicts[conflict] then
+						seen_conflicts[conflict] = true
+						conflicts[#conflicts + 1] = conflict
+					end
+				else
+					owners[key] = plugin_name
+				end
 			end
 		end
 	end
 
-	table.sort(duplicates)
-	return duplicates
+	table.sort(conflicts)
+	return conflicts
 end
+
+M.lazy_keymap_conflicts = lazy_keymap_conflicts
 
 local function leader_prefix_conflicts()
 	local conflicts = {}
@@ -341,11 +353,11 @@ function M.collect()
 		"not in Lazy spec"
 	)
 
-	local duplicates = duplicate_keymaps()
+	local duplicates = lazy_keymap_conflicts()
 	add(
 		results,
 		#duplicates == 0 and "OK" or "ERR",
-		"global keymap duplicates",
+		"Lazy keymap conflicts",
 		#duplicates == 0 and "none" or table.concat(duplicates, ", ")
 	)
 

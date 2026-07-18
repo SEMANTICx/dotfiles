@@ -47,7 +47,9 @@ return {
 		vim.api.nvim_create_autocmd("FileType", {
 			group = group,
 			callback = function(args)
-				if vim.list_contains(treesitter.get_installed("parsers"), vim.treesitter.language.get_lang(args.match)) then
+				if
+					vim.list_contains(treesitter.get_installed("parsers"), vim.treesitter.language.get_lang(args.match))
+				then
 					vim.treesitter.start(args.buf)
 				end
 			end,

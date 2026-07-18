@@ -36,10 +36,10 @@ M.languages = {
 	},
 	python = {
 		lsp = "pyright",
-		mason = { "pyright", "black", "flake8" },
+		mason = { "pyright", "ruff" },
 		treesitter = { "python" },
-		formatters = { python = { "black" } },
-		linters = { python = { "flake8" } },
+		formatters = { python = { "ruff_format" } },
+		linters = { python = { "ruff" } },
 	},
 	go = {
 		lsp = "gopls",
@@ -120,9 +120,7 @@ M.languages = {
 		mason = { "tailwindcss-language-server" },
 	},
 	markdown = {
-		mason = { "prettier", "prettierd" },
 		treesitter = { "markdown", "markdown_inline" },
-		formatters = { markdown = prettier() },
 	},
 	svelte_vue = {
 		mason = { "prettier", "prettierd", "eslint_d" },
@@ -175,9 +173,10 @@ M.languages = {
 M.linter_commands = {
 	cpplint = "cpplint",
 	eslint_d = "eslint_d",
-	flake8 = "flake8",
 	hadolint = "hadolint",
 	revive = "revive",
+	ruff = "ruff",
+	ruff_format = "ruff",
 	shellcheck = "shellcheck",
 }
 

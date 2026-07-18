@@ -137,6 +137,8 @@ for _, case in ipairs(cases) do
 		local statusline_lsp = require("nvconfig").ui.statusline.modules.lsp()
 		assert(statusline_lsp:find("LSP", 1, true), "statusline did not detect the attached LSP")
 		assert(not statusline_lsp:find(case.name, 1, true), "statusline exposed the server name")
+		local definition_map = vim.fn.maparg("<leader>gd", "n", false, true)
+		assert(definition_map.desc == "LSP: go to definition", "LSP definition mapping lacks a description")
 
 		local params = { textDocument = vim.lsp.util.make_text_document_params(bufnr) }
 		local responses, request_err = vim.lsp.buf_request_sync(bufnr, "textDocument/documentSymbol", params, 20000)

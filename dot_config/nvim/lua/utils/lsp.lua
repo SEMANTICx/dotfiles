@@ -18,42 +18,45 @@ M.on_attach = function(event)
 		silent = true, -- don't print the command to the cli
 		buffer = bufnr, -- restrict the keymap to the local buffer number
 	}
+	local function map(mode, lhs, rhs, desc)
+		keymap(mode, lhs, rhs, vim.tbl_extend("force", opts, { desc = desc }))
+	end
 
 	-- native neovim keymaps
-	keymap("n", "<leader>gd", vim.lsp.buf.definition, opts) -- goto definition
-	keymap("n", "<leader>gD", vim.lsp.buf.declaration, opts) -- goto declaration
-	keymap("n", "<leader>gS", function()
+	map("n", "<leader>gd", vim.lsp.buf.definition, "LSP: go to definition")
+	map("n", "<leader>gD", vim.lsp.buf.declaration, "LSP: go to declaration")
+	map("n", "<leader>gS", function()
 		vim.cmd("vsplit")
 		vim.lsp.buf.definition()
-	end, opts) -- goto definition in split
-	keymap("n", "<leader>ca", vim.lsp.buf.code_action, opts) -- Code actions
-	keymap("n", "<leader>rn", vim.lsp.buf.rename, opts) -- Rename symbol
-	keymap("n", "<leader>D", function()
+	end, "LSP: definition in split")
+	map("n", "<leader>ca", vim.lsp.buf.code_action, "LSP: code action")
+	map("n", "<leader>rn", vim.lsp.buf.rename, "LSP: rename symbol")
+	map("n", "<leader>D", function()
 		vim.diagnostic.open_float({ scope = "line" })
-	end, opts) -- Line diagnostics (float)
-	keymap("n", "<leader>dd", function()
+	end, "Diagnostics: current line")
+	map("n", "<leader>dd", function()
 		vim.diagnostic.open_float({ scope = "cursor" })
-	end, vim.tbl_extend("force", opts, { desc = "Cursor diagnostics" }))
-	keymap("n", "<leader>pd", function()
+	end, "Diagnostics: cursor")
+	map("n", "<leader>pd", function()
 		vim.diagnostic.jump({ count = -1 })
-	end, opts) -- previous diagnostic
-	keymap("n", "<leader>nd", function()
+	end, "Diagnostics: previous")
+	map("n", "<leader>nd", function()
 		vim.diagnostic.jump({ count = 1 })
-	end, opts) -- next diagnostic
-	keymap("n", "K", vim.lsp.buf.hover, opts) -- hover documentation
+	end, "Diagnostics: next")
+	map("n", "K", vim.lsp.buf.hover, "LSP: hover documentation")
 
 	-- fzf-lua keymaps
-	keymap("n", "<leader>fd", "<cmd>FzfLua lsp_finder<CR>", opts) -- LSP Finder (definition + references)
-	keymap("n", "<leader>fr", "<cmd>FzfLua lsp_references<CR>", opts) -- Show all references to the symbol under the cursor
-	keymap("n", "<leader>ft", "<cmd>FzfLua lsp_typedefs<CR>", opts) -- Jump to the type definition of the symbol under the cursor
-	keymap("n", "<leader>fw", "<cmd>FzfLua lsp_workspace_symbols<CR>", opts) -- Search for any symbol across the entire project/workspace
-	keymap("n", "<leader>fi", "<cmd>FzfLua lsp_implementations<CR>", opts) -- Go to implementation
+	map("n", "<leader>fd", "<cmd>FzfLua lsp_finder<CR>", "LSP: finder")
+	map("n", "<leader>fr", "<cmd>FzfLua lsp_references<CR>", "LSP: references")
+	map("n", "<leader>ft", "<cmd>FzfLua lsp_typedefs<CR>", "LSP: type definitions")
+	map("n", "<leader>fw", "<cmd>FzfLua lsp_workspace_symbols<CR>", "LSP: workspace symbols")
+	map("n", "<leader>fi", "<cmd>FzfLua lsp_implementations<CR>", "LSP: implementations")
 
 	-- Order Imports (if supported by the client LSP)
 	if client:supports_method("textDocument/codeAction", bufnr) then
-		keymap("n", "<leader>oi", function()
+		map("n", "<leader>oi", function()
 			require("utils.organize_imports").run(bufnr)
-		end, opts)
+		end, "LSP: organize imports")
 	end
 
 	-- === DAP keymaps ===
@@ -64,14 +67,14 @@ M.on_attach = function(event)
 			callback()
 		end
 
-		keymap("n", "<leader>dc", function()
+		map("n", "<leader>dc", function()
 			with_dapui(dap.continue)
-		end, opts) -- Continue / Start
-		keymap("n", "<leader>do", dap.step_over, opts) -- Step over
-		keymap("n", "<leader>di", dap.step_into, opts) -- Step into
-		keymap("n", "<leader>du", dap.step_out, opts) -- Step out
-		keymap("n", "<leader>db", dap.toggle_breakpoint, opts) -- Toggle breakpoint
-		keymap("n", "<leader>dr", dap.repl.open, opts) -- Open DAP REPL
+		end, "DAP: continue or start")
+		map("n", "<leader>do", dap.step_over, "DAP: step over")
+		map("n", "<leader>di", dap.step_into, "DAP: step into")
+		map("n", "<leader>du", dap.step_out, "DAP: step out")
+		map("n", "<leader>db", dap.toggle_breakpoint, "DAP: toggle breakpoint")
+		map("n", "<leader>dr", dap.repl.open, "DAP: open REPL")
 	end
 end
 

@@ -68,13 +68,17 @@ return {
 			local timer = assert(vim.uv.new_timer())
 			timers[bufnr] = timer
 			local delay = tonumber(vim.g.lint_debounce_ms) or 300
-			timer:start(delay, 0, vim.schedule_wrap(function()
-				if timers[bufnr] ~= timer then
-					return
-				end
-				close_timer(bufnr)
-				lint_buffer(bufnr)
-			end))
+			timer:start(
+				delay,
+				0,
+				vim.schedule_wrap(function()
+					if timers[bufnr] ~= timer then
+						return
+					end
+					close_timer(bufnr)
+					lint_buffer(bufnr)
+				end)
+			)
 		end
 
 		local group = vim.api.nvim_create_augroup("LintConfig", { clear = true })

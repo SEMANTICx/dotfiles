@@ -8,7 +8,11 @@ local function run(command, timeout)
 	local result = vim.system(command, { text = true }):wait(timeout or 120000)
 	assert(
 		result.code == 0,
-		string.format("command failed (%s): %s", table.concat(command, " "), vim.trim(result.stderr or result.stdout or ""))
+		string.format(
+			"command failed (%s): %s",
+			table.concat(command, " "),
+			vim.trim(result.stderr or result.stdout or "")
+		)
 	)
 	return vim.trim(result.stdout or "")
 end

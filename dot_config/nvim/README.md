@@ -30,6 +30,7 @@ GitHub Actions restores plugins strictly from `lazy-lock.json`, verifies that re
 - Lint runs immediately after save and is debounced for 300 ms after leaving insert mode. Override the delay with `vim.g.lint_debounce_ms`.
 - Node, Python, Ruby, and Perl remote plugin providers are disabled; external tools and language servers remain available.
 - Language support is centralized in `lua/config/tools.lua`; LSP servers, Mason tools, Treesitter parsers, formatters, and linters are derived from that file.
+- Python uses Pyright for LSP plus Ruff for linting and formatting. The default Ruff policy lives in `~/.config/ruff/ruff.toml`; project-local Ruff configuration takes precedence.
 - The statusline backend is selected by `NVIM_STATUSLINE`: `nvchad` is the default and `lualine` keeps its automatic colorscheme-derived theme. NvChad UI remains available as the shared icon source in both modes.
 - Mason's UI and installer load only for their commands or `:ConfigSyncTools`; its `bin` directory remains on `PATH` so installed language tools work without loading Mason itself.
 - Obsidian uses `~/Documents/Notes` by default. Set `OBSIDIAN_VAULT` to use a different vault without editing the config.

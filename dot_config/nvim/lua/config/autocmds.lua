@@ -105,8 +105,9 @@ vim.api.nvim_create_autocmd("LspProgress", {
 			return
 		end
 
+		local token = data.params.token or "default"
 		vim.api.nvim_echo({ { value.message or value.title or "done" } }, false, {
-			id = "lsp.progress." .. tostring(data.client_id),
+			id = string.format("lsp.progress.%s.%s", data.client_id, token),
 			kind = "progress",
 			source = "vim.lsp",
 			title = value.title,
@@ -181,7 +182,10 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 			return
 		end
 
-		if not trim_disabled_filetypes[vim.bo[args.buf].filetype] and vim.b[args.buf].trim_trailing_whitespace ~= false then
+		if
+			not trim_disabled_filetypes[vim.bo[args.buf].filetype]
+			and vim.b[args.buf].trim_trailing_whitespace ~= false
+		then
 			local ok, trailspace = pcall(require, "mini.trailspace")
 			if ok then
 				pcall(trailspace.trim)

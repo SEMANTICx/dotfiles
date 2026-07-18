@@ -55,6 +55,12 @@ check(lazy_config.plugins["nvim-transparent"] == nil, "Redundant transparency pl
 for _, plugin in ipairs({ "csvview.nvim", "mini.splitjoin", "nvim-treesitter-textobjects" }) do
 	check(lazy_config.plugins[plugin] ~= nil, "Workflow plugin declared: " .. plugin)
 end
+local lazy_key_conflicts = require("config.health").lazy_keymap_conflicts()
+check(#lazy_key_conflicts == 0, "Lazy key specs avoid exact conflicts", table.concat(lazy_key_conflicts, ", "))
+check(
+	lazy_config.plugins["tiny-inline-diagnostic.nvim"].event == "VeryLazy",
+	"Inline diagnostics load for lint-only buffers"
+)
 
 local nvchad_icons_ok, nvchad_icons_err = pcall(function()
 	local devicons = require("nvim-web-devicons")
@@ -105,6 +111,32 @@ for _, command in ipairs({
 	check(vim.fn.exists(":" .. command) == 2, "Command available: " .. command)
 end
 
+local progress_ok, progress_err = xpcall(function()
+	local ids = {}
+	local original_echo = vim.api.nvim_echo
+	vim.api.nvim_echo = function(_, _, opts)
+		ids[#ids + 1] = opts.id
+	end
+
+	local emitted, emit_err = pcall(function()
+		for _, token in ipairs({ "index", "workspace" }) do
+			vim.api.nvim_exec_autocmds("LspProgress", {
+				data = {
+					client_id = 9,
+					params = {
+						token = token,
+						value = { kind = "report", message = token, percentage = 10 },
+					},
+				},
+			})
+		end
+	end)
+	vim.api.nvim_echo = original_echo
+	assert(emitted, emit_err)
+	assert(#ids == 2 and ids[1] ~= ids[2], "concurrent LSP progress tokens share a message id")
+end, debug.traceback)
+check(progress_ok, "Concurrent LSP progress messages stay independent", progress_err)
+
 for _, provider in ipairs({ "node", "python3", "ruby", "perl" }) do
 	check(vim.g["loaded_" .. provider .. "_provider"] == 0, "Remote provider disabled: " .. provider)
 end
@@ -116,6 +148,13 @@ for _, name in ipairs(tools.language_order) do
 	ordered[name] = true
 	check(type(tools.languages[name]) == "table", "Language definition: " .. name)
 end
+check(tools.languages.python.lsp == "pyright", "Pyright remains the Python LSP")
+check(contains(tools.mason_tools, "ruff"), "Ruff Mason tool declared")
+check(not contains(tools.mason_tools, "black"), "Black removed from Mason tools")
+check(not contains(tools.mason_tools, "flake8"), "Flake8 removed from Mason tools")
+check(vim.deep_equal(tools.formatters_by_ft.python, { "ruff_format" }), "Ruff formats Python")
+check(vim.deep_equal(tools.linters_by_ft.python, { "ruff" }), "Ruff lints Python")
+check(tools.formatters_by_ft.markdown == nil, "Disabled Markdown format-on-save has no dead formatter")
 check(contains(tools.treesitter_parsers, "tsx"), "TSX parser declared")
 
 local treesitter_ok, treesitter_err = pcall(function()
@@ -231,9 +270,13 @@ local lsp_ok, lsp_err = pcall(function()
 			return map.lhs == " dd"
 		end)
 		assert(
-			diagnostic_map and diagnostic_map.desc == "Cursor diagnostics",
+			diagnostic_map and diagnostic_map.desc == "Diagnostics: cursor",
 			"cursor diagnostics did not move to <leader>dd"
 		)
+		local definition_map = vim.iter(vim.api.nvim_buf_get_keymap(fixture_buf, "n")):find(function(map)
+			return map.lhs == " gd"
+		end)
+		assert(definition_map and definition_map.desc == "LSP: go to definition", "LSP mappings lack descriptions")
 	end, debug.traceback)
 
 	vim.lsp.get_clients = original_get_clients
@@ -282,6 +325,13 @@ local lsp_ok, lsp_err = pcall(function()
 	end
 	vim.api.nvim_buf_delete(typst_buf, { force = true })
 
+	local yaml_schemas = assert(vim.lsp.config.yamlls.settings.yaml.schemas)
+	local compose_patterns = assert(yaml_schemas["https://json.schemastore.org/docker-compose.json"])
+	for _, pattern in ipairs({ "docker-compose*.yml", "docker-compose*.yaml", "compose.yml", "compose.yaml" }) do
+		assert(contains(compose_patterns, pattern), "Docker Compose schema misses: " .. pattern)
+	end
+	assert(yaml_schemas["https://json.schemastore.org/composer.json"] == nil, "yamlls contains a JSON-only schema")
+
 	local temp = vim.fn.tempname()
 	vim.fn.mkdir(vim.fs.joinpath(temp, ".git"), "p")
 	local plain_buf = vim.api.nvim_create_buf(false, true)
@@ -304,6 +354,72 @@ local lsp_ok, lsp_err = pcall(function()
 	vim.fn.delete(temp, "rf")
 end)
 check(lsp_ok, "LSP configuration and Tailwind coverage", lsp_err)
+
+local snacks_rename_ok, snacks_rename_err = xpcall(function()
+	local rename = require("snacks").rename
+	local original_get_clients = vim.lsp.get_clients
+	local original_apply_workspace_edit = vim.lsp.util.apply_workspace_edit
+	local temp = vim.fn.tempname()
+	local request_callback
+	local renamed = false
+	local applied = false
+	local notified = false
+
+	local relevant_client = {
+		name = "relevant",
+		config = { root_dir = temp },
+		attached_buffers = {},
+		offset_encoding = "utf-16",
+		supports_method = function()
+			return true
+		end,
+		request = function(_, method, _, callback)
+			assert(method == "workspace/willRenameFiles")
+			request_callback = callback
+			return true
+		end,
+		notify = function(_, method)
+			assert(method == "workspace/didRenameFiles")
+			notified = true
+		end,
+	}
+	local irrelevant_client = {
+		name = "irrelevant",
+		config = { root_dir = temp .. "-other" },
+		attached_buffers = {},
+		supports_method = function()
+			return true
+		end,
+		request = function()
+			error("irrelevant LSP client received a rename request")
+		end,
+		notify = function()
+			error("irrelevant LSP client received a rename notification")
+		end,
+	}
+
+	local fixture_ok, fixture_err = xpcall(function()
+		vim.lsp.get_clients = function()
+			return { relevant_client, irrelevant_client }
+		end
+		vim.lsp.util.apply_workspace_edit = function()
+			applied = true
+		end
+
+		rename.on_rename_file(vim.fs.joinpath(temp, "old.ts"), vim.fs.joinpath(temp, "new.ts"), function()
+			renamed = true
+		end)
+		assert(type(request_callback) == "function", "relevant LSP client did not receive a rename request")
+		assert(not renamed, "file rename blocked instead of waiting asynchronously")
+		request_callback(nil, { changes = {} })
+		assert(renamed and applied and notified, "asynchronous rename sequence did not complete")
+	end, debug.traceback)
+
+	vim.lsp.get_clients = original_get_clients
+	vim.lsp.util.apply_workspace_edit = original_apply_workspace_edit
+	assert(fixture_ok, fixture_err)
+end, debug.traceback)
+check(snacks_rename_ok, "Snacks file rename is asynchronous and workspace-scoped", snacks_rename_err)
 
 local session_ok, session_err = pcall(function()
 	local startup_restores = vim.api.nvim_get_autocmds({

@@ -7,7 +7,7 @@
 --- @param capabilities table LSP client capabilities from the completion engine
 --- @return nil
 return function(capabilities)
-	vim.lsp.config('dockerls',{
+	vim.lsp.config("dockerls", {
 		capabilities = capabilities,
 		filetypes = { "dockerfile" },
 	})

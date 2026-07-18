@@ -84,6 +84,18 @@ jobs:
       - name: Verify lockfile is unchanged
         run: git diff --exit-code -- lazy-lock.json
 
+      - name: Install StyLua
+        if: matrix.neovim == 'stable'
+        run: >-
+          nvim --headless
+          "+lua require('lazy').load({ plugins = { 'mason.nvim' } })"
+          "+MasonInstall stylua"
+          +qa
+
+      - name: Check Lua formatting
+        if: matrix.neovim == 'stable'
+        run: "$XDG_DATA_HOME/nvim/mason/bin/stylua --check lua tests init.lua"
+
       - name: Install TSX parser
         run: >-
           nvim --headless
