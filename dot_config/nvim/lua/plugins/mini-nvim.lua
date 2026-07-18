@@ -7,7 +7,6 @@
 
 return {
 	{ "echasnovski/mini.ai", version = "*", event = "VeryLazy", opts = {} },
-	{ "echasnovski/mini.comment", version = "*", event = "VeryLazy", opts = {} },
 	{ "echasnovski/mini.move", version = "*", event = "VeryLazy", opts = {} },
 	{ "echasnovski/mini.surround", version = "*", event = "VeryLazy", opts = {} },
 	{ "echasnovski/mini.cursorword", version = "*", event = "VeryLazy", opts = {} },

@@ -84,8 +84,28 @@ return {
 			end,
 			desc = "Open Lazygit",
 		},
+		{
+			"<leader>.",
+			function()
+				require("snacks").scratch()
+			end,
+			desc = "Toggle scratch buffer",
+		},
+		{
+			"<leader>go",
+			function()
+				require("snacks").gitbrowse()
+			end,
+			mode = { "n", "x" },
+			desc = "Open in Git browser",
+		},
 	},
 	opts = {
+		bigfile = {
+			enabled = true,
+		},
+		scratch = {},
+		gitbrowse = {},
 		dashboard = {
 			enabled = true,
 			width = ghostty_dashboard.width,

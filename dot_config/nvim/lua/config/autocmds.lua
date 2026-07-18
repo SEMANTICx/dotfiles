@@ -43,6 +43,7 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 })
 
 local special_filetypes = {
+	bigfile = true,
 	checkhealth = true,
 	help = true,
 	lazy = true,
@@ -52,6 +53,68 @@ local special_filetypes = {
 	snacks_dashboard = true,
 	trouble = true,
 }
+
+-- Preserve the active fcitx5 input method across insert mode without blocking
+-- Neovim's main loop. Stale callbacks are ignored when modes change quickly.
+if vim.fn.executable("fcitx5-remote") == 1 then
+	local fcitx_generation = 0
+	local restore_fcitx = false
+	local fcitx_group = vim.api.nvim_create_augroup("Fcitx5InsertMode", { clear = true })
+
+	vim.api.nvim_create_autocmd("InsertLeave", {
+		group = fcitx_group,
+		callback = function()
+			fcitx_generation = fcitx_generation + 1
+			local generation = fcitx_generation
+
+			vim.system({ "fcitx5-remote" }, { text = true }, function(result)
+				vim.schedule(function()
+					if generation ~= fcitx_generation then
+						return
+					end
+
+					restore_fcitx = result.code == 0 and tonumber(vim.trim(result.stdout or "")) == 2
+					if restore_fcitx then
+						vim.system({ "fcitx5-remote", "-c" }, { detach = true })
+					end
+				end)
+			end)
+		end,
+	})
+
+	vim.api.nvim_create_autocmd("InsertEnter", {
+		group = fcitx_group,
+		callback = function()
+			fcitx_generation = fcitx_generation + 1
+			if restore_fcitx then
+				restore_fcitx = false
+				vim.system({ "fcitx5-remote", "-o" }, { detach = true })
+			end
+		end,
+	})
+end
+
+-- Render work-done progress through Neovim's native progress-message API.
+local lsp_progress_group = vim.api.nvim_create_augroup("NativeLspProgress", { clear = true })
+vim.api.nvim_create_autocmd("LspProgress", {
+	group = lsp_progress_group,
+	callback = function(event)
+		local data = event.data
+		local value = data and data.params and data.params.value
+		if not value then
+			return
+		end
+
+		vim.api.nvim_echo({ { value.message or value.title or "done" } }, false, {
+			id = "lsp.progress." .. tostring(data.client_id),
+			kind = "progress",
+			source = "vim.lsp",
+			title = value.title,
+			status = value.kind == "end" and "success" or "running",
+			percent = value.percentage,
+		})
+	end,
+})
 
 local trim_disabled_filetypes = {
 	gitcommit = true,
