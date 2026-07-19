@@ -122,7 +122,9 @@ manage_ssh_config = true
 [experimental]
 allow_nested = false
 kitty_graphics = true
-pane_history = true
+# Start restored terminal panes with a clean screen. Workspace layout, CWD and
+# supported AI-agent session restoration remain enabled separately.
+pane_history = false
 cjk_ime_agents = ["claude", "codex", "opencode"]
 
 [advanced]

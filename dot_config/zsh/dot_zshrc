@@ -131,6 +131,9 @@ source "$ZDOTDIR/prompt.zsh"
 # Herdr shortcuts
 source "$ZDOTDIR/herdr.zsh"
 
+# nnn file manager (theme, plugins, preview and cd-on-quit)
+source "$HOME/.config/nnn/nnn.zsh"
+
 # =========================================================
 # Node / NVM
 # =========================================================
