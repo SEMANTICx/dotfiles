@@ -28,5 +28,7 @@ export STARSHIP_CONFIG="$ZDOTDIR/starship.toml"
 typeset -gU path PATH
 path=("$HOME/.local/bin" $path)
 
-[[ -r "$HOME/.config/secrets/nvim-ai.env" ]] &&
+if [[ -r "$HOME/.config/secrets/nvim-ai.env" ]]; then
+  # shellcheck source=/dev/null
   source "$HOME/.config/secrets/nvim-ai.env"
+fi
