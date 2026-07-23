@@ -21,6 +21,11 @@ return {
 		},
 	},
 	opts = {
+		sources = {
+			path = {
+				max_depth = 3,
+			},
+		},
 		bar = {
 			padding = {
 				left = 1,
