@@ -1,0 +1,127 @@
+" Core editing ---------------------------------------------------------------
+syntax enable
+filetype plugin indent on
+
+set number
+set relativenumber
+set cursorline
+set mouse=a
+
+set tabstop=4
+set shiftwidth=4
+set softtabstop=4
+set expandtab
+set autoindent
+set cinoptions=l1
+
+set ignorecase
+set smartcase
+set incsearch
+set hlsearch
+
+set timeoutlen=300
+set nowrap
+set linebreak
+set scrolloff=8
+set sidescrolloff=8
+set splitbelow
+set splitright
+
+let mapleader = " "
+let maplocalleader = " "
+
+" Persistent undo -----------------------------------------------------------
+set undofile
+let s:undo_dir = expand("~/.cache/vim/undo")
+if !isdirectory(s:undo_dir)
+    call mkdir(s:undo_dir, "p", 0700)
+endif
+execute "set undodir=" . fnameescape(s:undo_dir)
+
+" Wayland clipboard provider ------------------------------------------------
+" Keep y/x/p on Vim's native registers.  The + register is only used by the
+" explicit Leader mappings below.
+if has("clipboard_provider") && executable("wl-copy") && executable("wl-paste")
+    function! s:WlClipboardCopy(reg, type, lines) abort
+        let l:command = a:reg ==# "*" ? "wl-copy -p" : "wl-copy"
+        call system(l:command, a:lines)
+    endfunction
+
+    function! s:WlClipboardPaste(reg) abort
+        let l:command = "wl-paste --type text/plain;charset=utf-8"
+        if a:reg ==# "*"
+            let l:command .= " -p"
+        endif
+        return ["", systemlist(l:command)]
+    endfunction
+
+    let v:clipproviders["wl_clipboard"] = {
+        \ "copy": {
+        \     "+": function("<SID>WlClipboardCopy"),
+        \     "*": function("<SID>WlClipboardCopy")
+        \ },
+        \ "paste": {
+        \     "+": function("<SID>WlClipboardPaste"),
+        \     "*": function("<SID>WlClipboardPaste")
+        \ }
+        \ }
+    set clipmethod=wl_clipboard
+endif
+
+nnoremap <leader>y "+y
+xnoremap <leader>y "+y
+nnoremap <leader>Y "+Y
+nnoremap <leader>p "+p
+xnoremap <leader>p "+p
+
+" Buffers, tabs, splits and navigation --------------------------------------
+nnoremap <silent> <C-s> :write<CR>
+nnoremap <silent> <leader>bn :bnext<CR>
+nnoremap <silent> <leader>bp :bprevious<CR>
+nnoremap <silent> <leader>to :tabnew<CR>
+nnoremap <silent> <leader>tx :tabclose<CR>
+nnoremap <silent> <leader>tn :tabnext<CR>
+nnoremap <silent> <leader>tp :tabprevious<CR>
+nnoremap <silent> <leader>sv <C-w>v
+nnoremap <silent> <leader>sh <C-w>s
+nnoremap <silent> <leader>se <C-w>=
+nnoremap <silent> <leader>sx :close<CR>
+nnoremap <silent> <C-h> <C-w>h
+nnoremap <silent> <C-j> <C-w>j
+nnoremap <silent> <C-k> <C-w>k
+nnoremap <silent> <C-l> <C-w>l
+
+" Filetype-specific behavior from the original configuration ----------------
+augroup vimrc_filetypes
+    autocmd!
+    autocmd BufEnter *.go setlocal noexpandtab
+augroup END
+
+nnoremap <leader>D :execute "normal! a" . system('date -u "+(%Y%m%d-%H%M%S)"')<CR>
+
+silent! colorscheme habamax
+
+" fcitx5 input-method state --------------------------------------------------
+if executable("fcitx5-remote")
+    let g:fcitx_state = 1
+
+    function! s:FcitxRememberAndClose() abort
+        let g:fcitx_state = str2nr(trim(system("fcitx5-remote")))
+        if g:fcitx_state == 2
+            call system("fcitx5-remote -c")
+        endif
+    endfunction
+
+    function! s:FcitxRestore() abort
+        if g:fcitx_state == 2
+            call system("fcitx5-remote -o")
+        endif
+    endfunction
+
+    augroup fcitx5_input_method
+        autocmd!
+        autocmd VimEnter * call <SID>FcitxRememberAndClose()
+        autocmd InsertLeave * call <SID>FcitxRememberAndClose()
+        autocmd InsertEnter * call <SID>FcitxRestore()
+    augroup END
+endif

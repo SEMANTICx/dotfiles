@@ -42,12 +42,14 @@ end
 local lua_file = vim.fs.joinpath(temp, "sample.lua")
 local python_file = vim.fs.joinpath(temp, "sample.py")
 local javascript_file = vim.fs.joinpath(temp, "sample.js")
+local jsonc_file = vim.fs.joinpath(temp, "sample.jsonc")
 local go_file = vim.fs.joinpath(temp, "sample.go")
 local shell_file = vim.fs.joinpath(temp, "sample.sh")
 
 vim.fn.writefile({ "local value = { answer = 42 }", "return value" }, lua_file)
 vim.fn.writefile({ "value=42", "print(value)" }, python_file)
 vim.fn.writefile({ "const value={answer:42};", "console.log(value);" }, javascript_file)
+vim.fn.writefile({ "{", "  // keep me", '  "value": 42', "}" }, jsonc_file)
 vim.fn.writefile({ "package main", "", "func main() {}" }, go_file)
 vim.fn.writefile({ "#!/usr/bin/env bash", "set -euo pipefail", "echo ok" }, shell_file)
 
@@ -55,6 +57,10 @@ run("Stylua formatting", { "stylua", lua_file })
 run("Ruff formatting", { "ruff", "format", "--quiet", python_file })
 run("Ruff lint", { "ruff", "check", "--quiet", python_file })
 run("Prettier formatting", { "prettier", "--write", javascript_file })
+run("Prettier JSONC formatting", { "prettier", "--write", jsonc_file })
+if not table.concat(vim.fn.readfile(jsonc_file), "\n"):find("// keep me", 1, true) then
+	fail("Prettier JSONC formatting removed comments")
+end
 run("Gofumpt formatting", { "gofumpt", "-w", go_file })
 run("Shellcheck lint", { "shellcheck", shell_file })
 

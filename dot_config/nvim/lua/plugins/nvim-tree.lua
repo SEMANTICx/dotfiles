@@ -16,11 +16,7 @@ return {
 				vim.schedule(function()
 					local win = vim.fn.bufwinid(args.buf)
 					if win ~= -1 and vim.api.nvim_win_is_valid(win) then
-						vim.api.nvim_set_option_value(
-							"fillchars",
-							"eob: ,vert: ,vertleft: ,vertright: ,verthoriz: ",
-							{ scope = "local", win = win }
-						)
+						vim.api.nvim_set_option_value("fillchars", "eob: ", { scope = "local", win = win })
 					end
 				end)
 			end,

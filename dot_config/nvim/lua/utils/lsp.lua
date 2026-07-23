@@ -11,15 +11,8 @@ M.on_attach = function(event)
 		return
 	end
 	local bufnr = event.buf
-	local keymap = vim.keymap.set
-
-	local opts = {
-		noremap = true, -- prevent recursive mapping
-		silent = true, -- don't print the command to the cli
-		buffer = bufnr, -- restrict the keymap to the local buffer number
-	}
 	local function map(mode, lhs, rhs, desc)
-		keymap(mode, lhs, rhs, vim.tbl_extend("force", opts, { desc = desc }))
+		vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = desc })
 	end
 
 	-- native neovim keymaps

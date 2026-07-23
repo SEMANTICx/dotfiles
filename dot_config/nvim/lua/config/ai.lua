@@ -1,27 +1,44 @@
 local M = {}
 
-M.adapter = vim.env.CODECOMPANION_ADAPTER or "copilot"
-M.model = vim.env.CODECOMPANION_MODEL
+local selection_file = vim.fn.expand("~/.config/secrets/nvim-ai.env")
+local default_openrouter_keys_file = vim.fn.expand("~/.config/secrets/openrouter.keys")
 
-local required_env_by_adapter = {
-	anthropic = "ANTHROPIC_API_KEY",
-	azure_openai = "AZURE_OPENAI_API_KEY",
-	deepseek = "DEEPSEEK_API_KEY",
-	gemini = "GEMINI_API_KEY",
-	githubmodels = "GITHUB_TOKEN",
-	huggingface = "HUGGINGFACE_API_KEY",
-	jina = "JINA_API_KEY",
-	mistral = "MISTRAL_API_KEY",
-	novita = "NOVITA_API_KEY",
-	openai = "OPENAI_API_KEY",
-	openai_responses = "OPENAI_API_KEY",
-	custom_openai = "CODECOMPANION_CUSTOM_URL",
-	tavily = "TAVILY_API_KEY",
-	xai = "XAI_API_KEY",
-}
+local function selection_value(name)
+	local environment_value = vim.env[name]
+	if environment_value and environment_value ~= "" then
+		return environment_value
+	end
+
+	if vim.fn.filereadable(selection_file) ~= 1 then
+		return nil
+	end
+
+	local ok, lines = pcall(vim.fn.readfile, selection_file)
+	if not ok then
+		return nil
+	end
+
+	for _, line in ipairs(lines) do
+		local key, value = line:match("^%s*export%s+([%w_]+)%s*=%s*(.-)%s*$")
+		if key == name then
+			local quote = value:sub(1, 1)
+			if (quote == [["]] or quote == [[']]) and value:sub(-1) == quote then
+				value = value:sub(2, -2)
+			end
+			return value:gsub("%$HOME", vim.env.HOME or vim.fn.expand("~"))
+		end
+	end
+
+	return nil
+end
+
+M.adapter = selection_value("CODECOMPANION_ADAPTER") or "openrouter"
+M.model = selection_value("CODECOMPANION_MODEL") or "anthropic/claude-fable-5"
 
 local rotating_key_env_by_adapter = {
 	openrouter = {
+		file = "OPENROUTER_API_KEYS_FILE",
+		default_file = default_openrouter_keys_file,
 		multiple = "OPENROUTER_API_KEYS",
 		single = "OPENROUTER_API_KEY",
 	},
@@ -38,10 +55,10 @@ local function parse_api_keys(value)
 	local seen = {}
 
 	for key in (value or ""):gmatch("[^,;\r\n]+") do
-		key = vim.trim(key)
-		if key ~= "" and not seen[key] then
-			seen[key] = true
-			table.insert(keys, key)
+		local trimmed = vim.trim(key)
+		if trimmed ~= "" and not seen[trimmed] then
+			seen[trimmed] = true
+			table.insert(keys, trimmed)
 		end
 	end
 
@@ -52,6 +69,18 @@ local function api_keys(adapter)
 	local env_names = rotating_key_env_by_adapter[adapter]
 	if not env_names then
 		return {}
+	end
+
+	if env_names.file then
+		local keys_file = selection_value(env_names.file) or env_names.default_file
+		keys_file = keys_file and vim.fn.expand(keys_file) or nil
+		if keys_file and vim.fn.filereadable(keys_file) == 1 then
+			local ok, lines = pcall(vim.fn.readfile, keys_file)
+			local keys = parse_api_keys(ok and table.concat(lines, "\n") or "")
+			if #keys > 0 then
+				return keys
+			end
+		end
 	end
 
 	local keys = parse_api_keys(vim.env[env_names.multiple])
@@ -155,20 +184,45 @@ function M.missing_credentials()
 		return "GitHub Copilot authentication (hosts.json, apps.json, or auth.db)"
 	end
 
-	local required_env = required_env_by_adapter[M.adapter]
-	if type(required_env) == "string" then
-		required_env = { required_env }
-	end
-
-	for _, env_name in ipairs(required_env or {}) do
-		if vim.env[env_name] == nil or vim.env[env_name] == "" then
-			return env_name
+	if M.adapter == "custom_openai" then
+		local url = vim.env.CODECOMPANION_CUSTOM_URL
+		if not url or url == "" then
+			return "CODECOMPANION_CUSTOM_URL"
 		end
 	end
 
 	local key_env = rotating_key_env_by_adapter[M.adapter]
 	if key_env and #api_keys(M.adapter) == 0 then
+		if key_env.file then
+			return string.format("%s, %s, or %s", key_env.file, key_env.multiple, key_env.single)
+		end
 		return string.format("%s or %s", key_env.multiple, key_env.single)
+	end
+	if key_env then
+		return nil
+	end
+
+	local adapters_ok, adapters = pcall(require, "codecompanion.adapters")
+	if not adapters_ok then
+		return nil
+	end
+
+	local resolved_ok, resolved = pcall(adapters.resolve, adapter_spec())
+	if not resolved_ok or type(resolved) ~= "table" then
+		return string.format("CodeCompanion adapter '%s'", M.adapter)
+	end
+
+	local api_key = resolved.env and resolved.env.api_key
+	if type(api_key) == "string" then
+		local value = vim.env[api_key]
+		if not value or value == "" then
+			return api_key
+		end
+	elseif type(api_key) == "function" then
+		local key_ok, value = pcall(api_key)
+		if not key_ok or not value or value == "" then
+			return string.format("%s authentication", M.adapter)
+		end
 	end
 
 	return nil

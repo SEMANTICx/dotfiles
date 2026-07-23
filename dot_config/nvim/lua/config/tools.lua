@@ -54,7 +54,7 @@ M.languages = {
 		treesitter = { "json" },
 		formatters = {
 			json = { "fixjson" },
-			jsonc = { "fixjson" },
+			jsonc = prettier(),
 		},
 	},
 	typescript = {
@@ -175,7 +175,6 @@ M.linter_commands = {
 	eslint_d = "eslint_d",
 	hadolint = "hadolint",
 	revive = "revive",
-	ruff = "ruff",
 	ruff_format = "ruff",
 	shellcheck = "shellcheck",
 }

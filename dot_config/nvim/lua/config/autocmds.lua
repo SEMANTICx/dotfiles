@@ -59,7 +59,34 @@ local special_filetypes = {
 if vim.fn.executable("fcitx5-remote") == 1 then
 	local fcitx_generation = 0
 	local restore_fcitx = false
+	local fcitx_queue = {}
+	local fcitx_busy = false
 	local fcitx_group = vim.api.nvim_create_augroup("Fcitx5InsertMode", { clear = true })
+
+	local run_next
+	local function enqueue(command, callback)
+		fcitx_queue[#fcitx_queue + 1] = { command = command, callback = callback or function() end }
+		run_next()
+	end
+
+	run_next = function()
+		if fcitx_busy then
+			return
+		end
+		local task = table.remove(fcitx_queue, 1)
+		if not task then
+			return
+		end
+
+		fcitx_busy = true
+		vim.system(task.command, { text = true }, function(result)
+			vim.schedule(function()
+				fcitx_busy = false
+				task.callback(result)
+				run_next()
+			end)
+		end)
+	end
 
 	vim.api.nvim_create_autocmd("InsertLeave", {
 		group = fcitx_group,
@@ -67,17 +94,15 @@ if vim.fn.executable("fcitx5-remote") == 1 then
 			fcitx_generation = fcitx_generation + 1
 			local generation = fcitx_generation
 
-			vim.system({ "fcitx5-remote" }, { text = true }, function(result)
-				vim.schedule(function()
-					if generation ~= fcitx_generation then
-						return
-					end
+			enqueue({ "fcitx5-remote" }, function(result)
+				if generation ~= fcitx_generation then
+					return
+				end
 
-					restore_fcitx = result.code == 0 and tonumber(vim.trim(result.stdout or "")) == 2
-					if restore_fcitx then
-						vim.system({ "fcitx5-remote", "-c" }, { detach = true })
-					end
-				end)
+				restore_fcitx = result.code == 0 and tonumber(vim.trim(result.stdout or "")) == 2
+				if restore_fcitx then
+					enqueue({ "fcitx5-remote", "-c" })
+				end
 			end)
 		end,
 	})
@@ -88,7 +113,7 @@ if vim.fn.executable("fcitx5-remote") == 1 then
 			fcitx_generation = fcitx_generation + 1
 			if restore_fcitx then
 				restore_fcitx = false
-				vim.system({ "fcitx5-remote", "-o" }, { detach = true })
+				enqueue({ "fcitx5-remote", "-o" })
 			end
 		end,
 	})

@@ -132,6 +132,8 @@ return {
 	config = function()
 		local resession = require("resession")
 		resession.setup({ autosave = { enabled = true, interval = 120, notify = false } })
+		resession.get_current()
+		vim.api.nvim_clear_autocmds({ group = "ResessionAutosave", event = "VimLeavePre" })
 		vim.api.nvim_create_user_command("SessionRestore", restore_current_project, {
 			desc = "Restore the saved session for the current project",
 		})

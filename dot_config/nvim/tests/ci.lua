@@ -80,6 +80,7 @@ local undodir = vim.fs.normalize(vim.o.undodir)
 local state_dir = vim.fs.normalize(vim.fn.stdpath("state"))
 check(vim.startswith(undodir, state_dir), "Undo directory follows stdpath('state')", undodir)
 check(vim.o.inccommand == "split", "Substitution preview uses inccommand split", vim.o.inccommand)
+check(vim.o.spelllang == "en", "Configured spell dictionaries are available", vim.o.spelllang)
 
 local function leader_prefix_conflicts(maps)
 	local conflicts = {}
@@ -154,6 +155,11 @@ check(not contains(tools.mason_tools, "black"), "Black removed from Mason tools"
 check(not contains(tools.mason_tools, "flake8"), "Flake8 removed from Mason tools")
 check(vim.deep_equal(tools.formatters_by_ft.python, { "ruff_format" }), "Ruff formats Python")
 check(vim.deep_equal(tools.linters_by_ft.python, { "ruff" }), "Ruff lints Python")
+local jsonc_formatters = tools.formatters_by_ft.jsonc or {}
+check(
+	jsonc_formatters[1] == "prettierd" and jsonc_formatters[2] == "prettier" and jsonc_formatters.stop_after_first,
+	"JSONC uses a comment-preserving formatter"
+)
 check(tools.formatters_by_ft.markdown == nil, "Disabled Markdown format-on-save has no dead formatter")
 check(contains(tools.treesitter_parsers, "tsx"), "TSX parser declared")
 
@@ -291,6 +297,11 @@ local lsp_ok, lsp_err = pcall(function()
 	end
 	assert(fixture_ok, fixture_err)
 
+	local gopls = assert(vim.lsp.config.gopls)
+	for _, filetype in ipairs({ "go", "gomod", "gowork", "gotmpl" }) do
+		assert(contains(gopls.filetypes, filetype), "gopls missing filetype: " .. filetype)
+	end
+
 	local tailwind = assert(vim.lsp.config.tailwindcss)
 	for _, filetype in ipairs({ "html", "css", "scss", "typescriptreact" }) do
 		assert(contains(tailwind.filetypes, filetype), "tailwindcss missing filetype: " .. filetype)
@@ -359,11 +370,17 @@ local snacks_rename_ok, snacks_rename_err = xpcall(function()
 	local rename = require("snacks").rename
 	local original_get_clients = vim.lsp.get_clients
 	local original_apply_workspace_edit = vim.lsp.util.apply_workspace_edit
+	local original_defer_fn = vim.defer_fn
 	local temp = vim.fn.tempname()
+	vim.fn.mkdir(temp, "p")
+	local from = vim.fs.joinpath(temp, "old.ts")
+	local to = vim.fs.joinpath(temp, "new.ts")
+	vim.fn.writefile({ "export const value = 1" }, from)
 	local request_callback
-	local renamed = false
+	local request_id = 40
 	local applied = false
 	local notified = false
+	local cancelled
 
 	local relevant_client = {
 		name = "relevant",
@@ -376,7 +393,11 @@ local snacks_rename_ok, snacks_rename_err = xpcall(function()
 		request = function(_, method, _, callback)
 			assert(method == "workspace/willRenameFiles")
 			request_callback = callback
-			return true
+			request_id = request_id + 1
+			return true, request_id
+		end,
+		cancel_request = function(_, id)
+			cancelled = id
 		end,
 		notify = function(_, method)
 			assert(method == "workspace/didRenameFiles")
@@ -406,20 +427,64 @@ local snacks_rename_ok, snacks_rename_err = xpcall(function()
 			applied = true
 		end
 
-		rename.on_rename_file(vim.fs.joinpath(temp, "old.ts"), vim.fs.joinpath(temp, "new.ts"), function()
-			renamed = true
-		end)
+		rename.rename_file({ from = from, to = to })
 		assert(type(request_callback) == "function", "relevant LSP client did not receive a rename request")
-		assert(not renamed, "file rename blocked instead of waiting asynchronously")
+		assert(vim.fn.filereadable(from) == 1, "file rename did not wait for the LSP response")
 		request_callback(nil, { changes = {} })
-		assert(renamed and applied and notified, "asynchronous rename sequence did not complete")
+		assert(
+			vim.fn.filereadable(from) == 0 and vim.fn.filereadable(to) == 1 and applied and notified,
+			"asynchronous rename sequence did not complete"
+		)
+
+		request_callback = nil
+		notified = false
+		local failed_from = vim.fs.joinpath(temp, "failed-old.ts")
+		local failed_to = vim.fs.joinpath(temp, "failed-new.ts")
+		vim.fn.writefile({ "export const failed = true" }, failed_from)
+		rename.on_rename_file(failed_from, failed_to, function() end)
+		assert(type(request_callback) == "function", "post-request rename failure did not reach LSP preparation")
+		request_callback(nil, nil)
+		assert(
+			vim.fn.filereadable(failed_from) == 1 and vim.fn.filereadable(failed_to) == 0 and not notified,
+			"post-request file rename failure notified LSP clients"
+		)
+
+		request_callback = nil
+		notified = false
+		rename.rename_file({
+			from = vim.fs.joinpath(temp, "missing.ts"),
+			to = vim.fs.joinpath(temp, "still-missing.ts"),
+		})
+		assert(request_callback == nil and not notified, "failed file rename notified LSP clients")
+
+		local timeout_callback
+		local timeout_from = vim.fs.joinpath(temp, "timeout-old.ts")
+		local timeout_to = vim.fs.joinpath(temp, "timeout-new.ts")
+		vim.fn.writefile({ "export const timeout = true" }, timeout_from)
+		vim.defer_fn = function(callback)
+			timeout_callback = callback
+			return {
+				is_closing = function()
+					return false
+				end,
+				stop = function() end,
+				close = function() end,
+			}
+		end
+		rename.on_rename_file(timeout_from, timeout_to, function() end)
+		local timed_out_request = request_id
+		assert(type(timeout_callback) == "function", "rename timeout was not scheduled")
+		timeout_callback()
+		assert(cancelled == timed_out_request, "timed-out LSP rename request was not cancelled")
 	end, debug.traceback)
 
 	vim.lsp.get_clients = original_get_clients
 	vim.lsp.util.apply_workspace_edit = original_apply_workspace_edit
+	vim.defer_fn = original_defer_fn
+	vim.fn.delete(temp, "rf")
 	assert(fixture_ok, fixture_err)
 end, debug.traceback)
-check(snacks_rename_ok, "Snacks file rename is asynchronous and workspace-scoped", snacks_rename_err)
+check(snacks_rename_ok, "Snacks file rename is asynchronous, scoped, and failure-safe", snacks_rename_err)
 
 local session_ok, session_err = pcall(function()
 	local startup_restores = vim.api.nvim_get_autocmds({
@@ -432,6 +497,17 @@ local session_ok, session_err = pcall(function()
 		event = "VimLeavePre",
 	})
 	assert(#exit_saves == 1, "project session exit save is unavailable")
+	require("resession").get_current()
+	local resession_config = require("resession.config")
+	assert(
+		resession_config.autosave.enabled and resession_config.autosave.interval == 120,
+		"periodic project session checkpoints are unavailable"
+	)
+	local duplicate_saves = vim.api.nvim_get_autocmds({
+		group = "ResessionAutosave",
+		event = "VimLeavePre",
+	})
+	assert(#duplicate_saves == 0, "Resession registered a duplicate exit save")
 end)
 check(session_ok, "Project sessions do not replace the startup dashboard", session_err)
 
@@ -628,6 +704,57 @@ local lint_ok, lint_err = pcall(function()
 	vim.api.nvim_buf_delete(buf, { force = true })
 end)
 check(lint_ok, "Lint debounce and save cancellation", lint_err)
+
+local fcitx_ok, fcitx_err = xpcall(function()
+	local original_executable = vim.fn.executable
+	local original_system = vim.system
+	local calls = {}
+	local callbacks = {}
+
+	local fixture_ok, fixture_err = xpcall(function()
+		vim.fn.executable = function(command)
+			if command == "fcitx5-remote" then
+				return 1
+			end
+			return original_executable(command)
+		end
+		vim.system = function(command, opts, callback)
+			if command[1] ~= "fcitx5-remote" then
+				return original_system(command, opts, callback)
+			end
+			calls[#calls + 1] = command[2] or "query"
+			callbacks[#callbacks + 1] = callback
+			return {}
+		end
+
+		dofile(vim.fn.stdpath("config") .. "/lua/config/autocmds.lua")
+		vim.api.nvim_exec_autocmds("InsertLeave", { group = "Fcitx5InsertMode" })
+		assert(calls[1] == "query", "fcitx state query was not queued")
+		callbacks[1]({ code = 0, stdout = "2\n" })
+		assert(
+			vim.wait(1000, function()
+				return calls[2] == "-c"
+			end),
+			"fcitx close was not queued"
+		)
+
+		vim.api.nvim_exec_autocmds("InsertEnter", { group = "Fcitx5InsertMode" })
+		assert(#calls == 2, "fcitx reopen raced ahead of the pending close")
+		callbacks[2]({ code = 0, stdout = "" })
+		assert(
+			vim.wait(1000, function()
+				return calls[3] == "-o"
+			end),
+			"fcitx reopen did not wait for close completion"
+		)
+		callbacks[3]({ code = 0, stdout = "" })
+	end, debug.traceback)
+
+	vim.fn.executable = original_executable
+	vim.system = original_system
+	assert(fixture_ok, fixture_err)
+end, debug.traceback)
+check(fcitx_ok, "Fcitx mode transitions serialize close and reopen commands", fcitx_err)
 
 if #failures > 0 then
 	report_github_error(failures)

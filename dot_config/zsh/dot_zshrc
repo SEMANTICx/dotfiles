@@ -142,12 +142,12 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 [ -s "$NVM_DIR/bash_completion" ] && source "$NVM_DIR/bash_completion"
 
-# Fastfetch startup banner.
+# Fastfetch startup banner (disabled).
 # Keep multiplexers clean: tmux sessions are persistent, so startup banners
 # quickly become noise in restored panes.
-if [[ -o interactive && -z "$TMUX" ]] && command -v fastfetch >/dev/null 2>&1; then
-  fastfetch --config "$XDG_CONFIG_HOME/fastfetch/startup.jsonc"
-  print
-fi
+# if [[ -o interactive && -z "$TMUX" ]] && command -v fastfetch >/dev/null 2>&1; then
+#   fastfetch --config "$XDG_CONFIG_HOME/fastfetch/startup.jsonc"
+#   print
+# fi
 
 alias clocktemp='clocktemp -tf 12 -df dd/mm -tu c -s true -lat 34.45 -lon 113.39 -c white -b default'

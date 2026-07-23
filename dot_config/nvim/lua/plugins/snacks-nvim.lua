@@ -7,6 +7,24 @@
 
 local ghostty_dashboard = require("ui.ghostty_dashboard")
 
+local function path_exists_exact(path)
+	local scan = vim.uv.fs_scandir(vim.fs.dirname(path))
+	if not scan then
+		return false
+	end
+
+	local basename = vim.fs.basename(path)
+	while true do
+		local name = vim.uv.fs_scandir_next(scan)
+		if not name then
+			return false
+		end
+		if name == basename then
+			return true
+		end
+	end
+end
+
 local function path_belongs_to_client(client, path, bufnr)
 	if bufnr and client.attached_buffers[bufnr] then
 		return true
@@ -16,9 +34,7 @@ local function path_belongs_to_client(client, path, bufnr)
 		if not root or root == "" then
 			return false
 		end
-		root = vim.fs.normalize(root)
-		local prefix = root:sub(-1) == "/" and root or (root .. "/")
-		return path == root or vim.startswith(path, prefix)
+		return vim.fs.relpath(vim.fs.normalize(root), path) ~= nil
 	end
 
 	if contains(client.config.root_dir) then
@@ -42,6 +58,22 @@ local function setup_lsp_rename(snacks)
 	-- relevant workspaces and avoiding synchronous waits on Neovim's main loop.
 	rename.on_rename_file = function(from, to, rename_file)
 		local from_path = vim.fs.normalize(vim.fn.fnamemodify(from, ":p"))
+		local function run_rename()
+			if not rename_file then
+				return true
+			end
+			local ok, err = pcall(rename_file)
+			if not ok then
+				vim.notify("File rename failed: " .. tostring(err), vim.log.levels.ERROR, { title = "LSP" })
+			end
+			return ok
+		end
+
+		local source_existed = vim.uv.fs_lstat(from) ~= nil
+		if rename_file and not source_existed then
+			run_rename()
+			return
+		end
 		local bufnr = vim.fn.bufnr(from)
 		if bufnr < 1 or not vim.api.nvim_buf_is_valid(bufnr) then
 			bufnr = nil
@@ -55,25 +87,21 @@ local function setup_lsp_rename(snacks)
 				},
 			},
 		}
-		local relevant = {}
-		for _, client in ipairs(vim.lsp.get_clients()) do
-			if path_belongs_to_client(client, from_path, bufnr) then
-				relevant[#relevant + 1] = client
-			end
-		end
-
 		local will_rename = {}
 		local did_rename = {}
-		for _, client in ipairs(relevant) do
-			if client:supports_method("workspace/willRenameFiles", request_bufnr) then
-				will_rename[#will_rename + 1] = client
-			end
-			if client:supports_method("workspace/didRenameFiles", request_bufnr) then
-				did_rename[#did_rename + 1] = client
+		for _, client in ipairs(vim.lsp.get_clients()) do
+			if path_belongs_to_client(client, from_path, bufnr) then
+				if client:supports_method("workspace/willRenameFiles", request_bufnr) then
+					will_rename[#will_rename + 1] = client
+				end
+				if client:supports_method("workspace/didRenameFiles", request_bufnr) then
+					did_rename[#did_rename + 1] = client
+				end
 			end
 		end
 
 		local applied = {}
+		local pending_requests = {}
 		local pending = #will_rename
 		local finished = false
 		local timeout
@@ -89,15 +117,17 @@ local function setup_lsp_rename(snacks)
 			end
 
 			if timed_out then
+				for request_id, client in pairs(pending_requests) do
+					pcall(client.cancel_request, client, request_id)
+				end
+				pending_requests = {}
 				vim.notify("LSP file rename preparation timed out; continuing", vim.log.levels.WARN, { title = "LSP" })
 			end
 
-			local renamed, rename_err = true, nil
-			if rename_file then
-				renamed, rename_err = pcall(rename_file)
+			if not run_rename() then
+				return
 			end
-			if not renamed then
-				vim.notify("File rename failed: " .. tostring(rename_err), vim.log.levels.ERROR, { title = "LSP" })
+			if rename_file and (path_exists_exact(from) or not path_exists_exact(to)) then
 				return
 			end
 
@@ -117,7 +147,15 @@ local function setup_lsp_rename(snacks)
 
 		for _, client in ipairs(will_rename) do
 			local lsp_client = client
-			local accepted = lsp_client:request("workspace/willRenameFiles", changes, function(err, edit)
+			local responded = false
+			local request_id
+			local accepted
+			accepted, request_id = lsp_client:request("workspace/willRenameFiles", changes, function(err, edit, ctx)
+				responded = true
+				local completed_id = (ctx and ctx.request_id) or request_id
+				if completed_id then
+					pending_requests[completed_id] = nil
+				end
 				if finished then
 					return
 				end
@@ -152,6 +190,8 @@ local function setup_lsp_rename(snacks)
 
 			if accepted == false then
 				pending = pending - 1
+			elseif request_id and not responded then
+				pending_requests[request_id] = lsp_client
 			end
 		end
 
