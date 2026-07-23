@@ -26,14 +26,14 @@ custom-shader = ./shaders/cursor-shaders/cursor_warp.glsl
 # background-opacity: 背景透明度，0.92 微透明能隐约看到桌面壁纸
 # background-blur: 毛玻璃模糊强度，配合半透明使用（值越大越模糊，true=20）
 # window-save-state: 退出后保留窗口状态（分屏、标签页、窗口大小位置），下次启动自动恢复
-window-padding-x = 8
-window-padding-y = 4,0
+window-padding-x = 4,0
+window-padding-y = 2,0
 background-opacity = 0.7
 # background-blur = 20
 window-save-state = always
 window-decoration = false
 background-opacity-cells = false
-window-padding-balance = true
+# window-padding-balance = true
 window-padding-color = extend-always
 
 # ==============================================================================
