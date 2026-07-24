@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Check out dotfiles
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
 
       - name: Install Neovim
         uses: rhysd/action-setup-vim@febef33995d6649302e9d88dda81e071b68f16a7 # v1
@@ -150,7 +150,7 @@ jobs:
 
     steps:
       - name: Check out dotfiles
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
 
       - name: Install stable Neovim
         uses: rhysd/action-setup-vim@febef33995d6649302e9d88dda81e071b68f16a7 # v1
